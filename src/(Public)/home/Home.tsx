@@ -1,9 +1,9 @@
 import React from 'react'
-import logo1 from '@/assets/img/mainLogo.png'
+import logo2 from '@/assets/img/mainLogo.png'
 export default function Home() {
   return (
     <div className='h-screen w-full flex items-center justify-between flex-col py-10'>
-        <img src={logo1} height={100} width={100}/>
+        <img src={logo2} height={100} width={100}/>
         <div className='lg:w-1/4 text-center text-gray-600 w-[90%]'>
         Warble is startup Platform where people can communicate , meet new people or create an online presence Providing user with full control of there accounts with Prime futures that stand. Still under development.
         </div>
