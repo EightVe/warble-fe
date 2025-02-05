@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Pacifico&family=Smooch+Sans:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import "tailwindcss";
+@import "tailwindcss/utilities";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*{
+  font-family: "Rubik", serif;
+  scroll-behavior: smooth;
+  }
+  .dashbg{
+    background: rgb(12,12,20);
+background: radial-gradient(circle, rgba(12,12,20,1) 0%, rgba(15,18,27,1) 30%, rgba(255, 168, 38, 0.151) 65%, rgba(15,18,27,1) 84%, rgba(12,12,20,1) 100%);
+  }
+  @keyframes pulse-highlight {
+    0% {
+      background-color: #ff575752;
+    }
+    50% {
+      background-color: #ff575741;
+    }
+    100% {
+      background-color: #ff575763;
+    }
+  }
+  
+  .highlight-comment {
+    animation: pulse-highlight 1s ease-in-out infinite alternate;
+  }
+  
+  .logofont{
+    font-family: "Pacifico", serif;
+    text-transform: capitalize;
+  }
+  .glowing-div {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, #ffea63c7, rgba(255, 255, 255, 0.1), transparent);
+    box-shadow: 0 0 150px #fbff93c1, /* Outer green glow */
+                0 0 300px #eeff97, /* Second layer glow */
+                0 0 450px rgba(255, 255, 255, 0.1); /* Subtle white glow for brightness */
+    filter: blur(30px); /* Blurring the glow for smoothness */
+   
+  }
+  .image-container {
+    position: relative;
+    width: 100%;
+    height: 100%; /* Adjust this as needed */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .imgwdd {
+    width: 100%; /* Adjust based on your layout */
+    height: auto;
+    position: absolute;
+    bottom: 0;
+    z-index: -5; /* Ensure it stays behind other elements */
+    -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 72%);
+    mask-image: radial-gradient(circle, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 72%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: cover;
+    mask-size: cover;
+  }
+  
+  .glowing-text {
+    text-align: center;
+    color: #fff; /* Fallback color */
+   
+    /* Adjusting gradient for better clarity */
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.6) 0%, rgb(255, 255, 255) 50%, rgba(255, 255, 255, 0.6) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+   
+    /* Softer and clearer glow effect */
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.5),
+                 0 0 8px rgba(255, 255, 255, 0.4),
+                 0 0 10px rgba(0, 255, 0, 0.3),
+                 0 0 1px rgba(0, 255, 0, 0.302);
+  
+    /* Shine animation */
+    animation: shine 5s infinite;
+  }
+
+
