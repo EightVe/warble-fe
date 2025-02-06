@@ -1,6 +1,6 @@
 
 import { Route, Routes} from 'react-router-dom';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthContext, AuthProvider } from '@/contexts/AuthContext';
 import Signup from './(Public)/auth/signup/Signup';
 import { Toaster } from 'sonner';
 import Login from './(Public)/auth/login/Login';
@@ -17,9 +17,11 @@ import SinglePostUI from './(Protected)/SingePost/SinglePostUI';
 import FullNotificationsPage from './(Protected)/Notifications/FullNotificationsPage';
 import ActivityPage from './(Protected)/Activity/ActivityPage';
 import SecurityCenterPage from './(Protected)/SecurityCenter/SecurityCenterPage';
-import { SocketProvider } from './contexts/SocketContext';
+import { SocketProvider, useSocket } from './contexts/SocketContext';
 import TestPage from './TEST_PAGE/TestPage';
 import Home from './(Public)/home/Home';
+import { useContext, useEffect, useState } from 'react';
+import ForceOpenNotification from './components/Notifications/ForceOpenNotification';
 const AppContent = () => {
   // const location = useLocation();
   // const hideNavigationBarPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
@@ -27,19 +29,31 @@ const AppContent = () => {
   // const hideNavigationBar = hideNavigationBarPaths.includes(location.pathname) || 
   //   matchPath('/reset-password/:token', location.pathname);
 
-  // const { user, loading } = useContext(AuthContext) || {};
-  // if (loading) {
-  //   return (
-  //     <div className='h-screen w-full z-50 fixed top-0 flex justify-center items-center bg-white'>
-  //       <Loader className="h-6 w-6 animate-spin" />
-  //     </div>
-  //   );
-  // }
-
-  // if (user && !user.verifiedEmail) {
-  //   return <EmailVerify />;
-  // }
-
+  const { user, loading} = useContext(AuthContext) || {};
+  const { forceOpenNotifications, setForceOpenNotifications ,notificationLoading} = useSocket();
+  if (notificationLoading) {
+    return null;
+  }
+  if (forceOpenNotifications.length > 0 && user) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/30 bg-opacity-50 z-50">
+        {forceOpenNotifications.map((notification) => (
+          <ForceOpenNotification
+            key={notification._id}
+            _id={notification._id}
+            title={notification.title}
+            description={notification.description}
+            AdminAnnouncement={notification.AdminAnnouncement ?? ""}
+            onClose={(id) =>
+              setForceOpenNotifications((prev) =>
+                prev.filter((n) => n._id !== id)
+              )
+            }
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <>
       {/* {!hideNavigationBar && <NavigationBar />} */}

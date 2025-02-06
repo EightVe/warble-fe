@@ -14,6 +14,7 @@ import FetchRelatedLikes from "@/(Protected)/Feed/functions/FetchRelatedLikes";
 import SinglePostCommentsFetch from "./SinglePostCommentsFetch";
 import { useMediaQuery } from "react-responsive";
 import MediaModal from "@/(Protected)/Feed/functions/images/MediaModal";
+import { useSocket } from "@/contexts/SocketContext";
 // Define PostOwner interface
 interface PostOwner {
   _id: string;
@@ -54,7 +55,26 @@ export default function FetchSinglePost() {
           const [commentsFetched, setCommentsFetched] = useState<{ [key: string]: boolean }>({});
           const isMobile = useMediaQuery({ query: "(max-width: 768px)" });
           const [selectedMedia, setSelectedMedia] = useState<string | null>(null)
-  
+            const { socket} = useSocket();
+          useEffect(() => {
+            if (!socket) return;
+          
+            const handleNewCommentOrReply = (data: { postId: string; commentsCount: number }) => {
+              if (data.postId !== post?._id) return;
+          
+              // ✅ Update comment count dynamically
+              setPost((prev) => prev ? { ...prev, comments: Array(data.commentsCount).fill(null) } : prev);
+            };
+          
+            socket.on("newComment", handleNewCommentOrReply);
+            socket.on("newReply", handleNewCommentOrReply);
+          
+            return () => {
+              socket.off("newComment", handleNewCommentOrReply);
+              socket.off("newReply", handleNewCommentOrReply);
+            };
+          }, [socket, post]);
+          
     useEffect(() => {
     const fetchPost = async () => {
       try {

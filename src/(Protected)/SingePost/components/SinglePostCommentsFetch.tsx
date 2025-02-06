@@ -16,22 +16,23 @@ import { useCircleAnimation } from "@/components/ui/useCircleAnimation";
 import CustomLink from "@/hooks/useLink";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "react-router-dom";
+import { useSocket } from "@/contexts/SocketContext";
   
 interface CommentProps {
   postId: string;
   postOwner:any;
   commentsFetched:any;
-  setCommentsFetched:any;
+  setCommentsFetched: React.Dispatch<React.SetStateAction<Record<string, boolean>>>; // ✅ Add this
   postUID?: string;
 }
-export default function SinglePostCommentsFetch({ postId, postOwner,commentsFetched,postUID }: CommentProps) {
+export default function SinglePostCommentsFetch({ postId, postOwner,commentsFetched,postUID,setCommentsFetched }: CommentProps) {
   const { user } = useContext(AuthContext) || {}; // Get current logged-in user
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [successDelete, setSuccessDelete] = useState(false);
   const { triggerAnimation, AnimationComponent } = useCircleAnimation();
-  
+
   const [page, setPage] = useState(1); // Track pagination
 const [hasMore, setHasMore] = useState(true); // Check if more comments exist
   const [visibleCount, setVisibleCount] = useState(5);
@@ -46,13 +47,107 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
 
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; username: string } | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const handleReplyToReply = (commentId: string, replyUsername: string) => {
-    setReplyingTo({ commentId, username: replyUsername });
-    setNewComment((prev) => {
-        return prev.startsWith(`@${replyUsername} `) ? prev : `@${replyUsername} `;
-      });
-    inputRef.current?.focus(); // Scroll input into view
+  const { socket, comments: socketComments, replies: socketReplies } = useSocket();
+  const mergedComments = Array.from(
+    new Map(
+      [...(socketComments?.[postId] || []), ...comments].map((c) => [c._id, c])
+    ).values()
+  );
+  
+  const mergedReplies = { ...replies, ...(socketReplies || {}) }; // ✅ Ensure it's always an object
+// ✅ Join and leave post room
+useEffect(() => {
+  if (!socket || !user || !postId) return;
+
+  console.log(`🚀 Rejoining post room on every action: ${postId}`);
+  socket.emit("joinPostRoom", postId);
+
+  return () => {
+    console.log(`👤 Leaving post room: ${postId}`);
+    socket.emit("leavePostRoom", postId);
   };
+}, [socket, user, postId, comments, replies]);  // 👈 Trigger rejoining on updates
+
+
+
+  // ✅ Listen for real-time updates from WebSocket
+  useEffect(() => {
+    if (!socket) return;
+  
+    const handleNewComment = (data: { postId: string; comment: any }) => {
+      if (data.postId !== postId) return;
+  
+      setComments((prev) => {
+        // ✅ Prevent duplicates by checking if the comment ID already exists
+        const existingIds = new Set(prev.map((c) => c._id));
+        if (existingIds.has(data.comment._id)) return prev;
+  
+        return [data.comment, ...prev]; // ✅ Always add to the TOP
+      });
+    };
+  
+    const handleNewReply = (data: { postId: string; commentId: string; reply: any }) => {
+      if (data.postId !== postId || !data.reply || !data.reply._id) return;
+    
+      setReplies((prev) => {
+        const existingReplies = prev[data.commentId] || [];
+    
+        // ✅ Ensure existingReplies only contains valid replies with `_id`
+        const validReplies = existingReplies.filter(r => r && r._id);
+        const existingIds = new Set(validReplies.map((r) => r._id));
+    
+        // ✅ Prevent duplicates
+        if (existingIds.has(data.reply._id)) return prev;
+    
+        return {
+          ...prev,
+          [data.commentId]: [...validReplies, data.reply], // ✅ Append safely
+        };
+      });
+    };
+    
+    
+    const handleCommentDeleted = ({ postId: receivedPostId, commentId }: { postId: string; commentId: string }) => {
+      if (receivedPostId !== postId) return;
+  
+      console.log(`🗑️ Deleting comment ${commentId} in post ${receivedPostId}`);
+      setComments((prev) => prev.filter((comment) => comment._id !== commentId));
+    };
+    const handleReplyDeleted = ({ postId: receivedPostId, commentId, replyId }: { postId: string; commentId: string; replyId: string }) => {
+      if (receivedPostId !== postId) return;
+  
+      console.log(`🗑️ Reply deleted: ${replyId} under comment ${commentId}`);
+  
+      setReplies((prev) => {
+        if (!prev[commentId]) return prev;
+        return { ...prev, [commentId]: prev[commentId].filter((reply) => reply?._id !== replyId) };
+      });
+    };
+    socket.on("commentDeleted", handleCommentDeleted);
+    
+    socket.on("replyDeleted", handleReplyDeleted);
+    socket.on("newComment", handleNewComment);
+    socket.on("newReply", handleNewReply);
+  
+    return () => {
+      socket.off("newComment", handleNewComment);
+      socket.off("newReply", handleNewReply);
+      socket.off("deleteComment", handleCommentDeleted);
+      socket.off("replyDeleted", handleReplyDeleted);
+    };
+  }, [socket, postId]);
+  
+  
+
+
+  
+  
+const handleReplyToReply = (commentId: string, replyUsername: string) => {
+  setReplyingTo({ commentId, username: replyUsername });
+  setNewComment((prev) => (prev.startsWith(`@${replyUsername} `) ? prev : `@${replyUsername} `));
+  setTimeout(() => inputRef.current?.focus(), 100);
+};
+
   const handleReplyClick = (username: string, commentId: string) => {
     setReplyingTo({ username, commentId });
   
@@ -74,49 +169,35 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
   const fetchComments = async (isInitialLoad = false): Promise<void> => {
     if (!hasMore || fetchingRef.current) return;
     fetchingRef.current = true;
-  
-    if (isInitialLoad) {
-      setIsLoading(true); // Full-page loading
-    } else {
-      setIsFetchingMore(true); // "Show More" loader
-    }
-  
-  
+
+    if (isInitialLoad) setIsLoading(true);
+    else setIsFetchingMore(true);
+
     try {
-      const endpoint = commentIdFromUrl 
-      ? `/post/get-single-comments/${postId}`  // ✅ Use special endpoint if comment query exists
-      : `/post/get-comments/${postId}`; 
-      const response = await axiosInstance.get(endpoint, {
-        params: { page,
-           limit: fetchLimit,
-           
-           ...(commentIdFromUrl && { commentId: commentIdFromUrl }), },
-      });
-  
-      if (response.data.success) {
-        setComments((prev: any[]) => {
-          const existingIds = new Set(prev.map((comment: any) => comment._id));
-          const newComments = response.data.comments.filter((comment: any) => !existingIds.has(comment._id));
-  
-          return [...prev, ...newComments]; // Append only new ones
+        const response = await axiosInstance.get(`/post/get-comments/${postId}`, {
+            params: { page, limit: fetchLimit, ...(commentIdFromUrl && { commentId: commentIdFromUrl }) },
         });
-  
-        // 🚀 Fetch replies for each comment automatically
-        response.data.comments.forEach((comment: any) => {
-          fetchReplies(comment._id);
-        });
-  
-        setPage((prevPage: number) => prevPage + 1);
-        setHasMore(response.data.hasMore);
-      }
-    } catch (error: any) {
-      console.error(`❌ Error fetching comments for Post ID: ${postId}`, error);
+
+        if (response.data.success) {
+            setComments((prev: any[]) => {
+                const existingIds = new Set(prev.map((comment: any) => comment._id));
+                const newComments = response.data.comments.filter((comment: any) => !existingIds.has(comment._id));
+                return [...prev, ...newComments];
+            });
+
+            response.data.comments.forEach((comment: any) => fetchReplies(comment._id));
+
+            setPage((prevPage: number) => prevPage + 1);
+            setHasMore(response.data.hasMore);
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching comments for Post ID: ${postId}`, error);
     } finally {
-      fetchingRef.current = false;
-      setIsLoading(false);
-      setIsFetchingMore(false);
+        fetchingRef.current = false;
+        setIsLoading(false);
+        setIsFetchingMore(false);
     }
-  };
+};
   
   
   
@@ -125,36 +206,60 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
 //     console.log("Updated Comments State:", comments);
 //   }, [comments]);
   useEffect(() => {
-    if (!commentsFetched[postId] && page === 1) {
-      fetchComments(); // Only fetch on first load
+    if (!commentsFetched[postId]) {
+        fetchComments(true);
+        setCommentsFetched((prev) => ({ ...prev, [postId]: true }));
     }
-  }, []);
-  useEffect(() => {
-    const fetchLikeStatusForComments = async () => {
-      try {
-        const updatedComments = await Promise.all(
-          comments.map(async (comment) => {
-            const response = await axiosInstance.get(`/post/comment-like-status/${comment._id}`);
-            if (response.data.success) {
-              return {
-                ...comment,
-                liked: response.data.isLiked,
-                likesCount: response.data.likesCount,
-              };
-            }
-            return comment;
-          })
-        );
-        setComments(updatedComments);
-      } catch (error) {
-        console.error("Error fetching like status for comments:", error);
-      }
-    };
+}, [postId]);
+useEffect(() => {
+  const fetchLikeStatusForComments = async () => {
+    try {
+      // ✅ Extract only valid MongoDB ObjectId comments (skip temporary ones)
+      const validComments = comments.filter((c) => /^[a-f\d]{24}$/i.test(c._id));
+
+      // ✅ Avoid fetching if all comments already have `liked` status
+      if (validComments.every((comment) => comment.liked !== undefined)) return;
+
+      const updatedComments = await Promise.all(
+        validComments.map(async (comment) => {
+          if (comment.liked !== undefined) return comment; // ✅ Skip if already fetched
+
+          const response = await axiosInstance.get(`/post/comment-like-status/${comment._id}`);
+          if (response.data.success) {
+            return {
+              ...comment,
+              liked: response.data.isLiked,
+              likesCount: response.data.likesCount,
+            };
+          }
+          return comment;
+        })
+      );
+
+      // ✅ Update only the necessary comments without causing a full re-render
+      setComments((prev) =>
+        prev.map((comment) => {
+          const updated = updatedComments.find((c) => c._id === comment._id);
+          return updated || comment;
+        })
+      );
+    } catch (error) {
+      console.error("Error fetching like status for comments:", error);
+    }
+  };
+
+  // ✅ Trigger fetch only if we have valid comments
+  if (comments.length > 0) {
+    fetchLikeStatusForComments();
+  }
+}, [comments.length]); // ✅ Now runs only when the **number of comments changes**
+
+
+
+
   
-    if (comments.length > 0) {
-      fetchLikeStatusForComments();
-    }
-  }, [comments.length]); // Fetch like status when comments are loaded
+  
+  
   const handleShowMore = () => {
   
     setVisibleCount((prev) => prev + fetchLimit); // Increase visible comments
@@ -163,40 +268,80 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
   const addComment = async () => {
     if (!newComment.trim() || loading) return;
     setLoading(true);
-
+  
     try {
-        let finalContent = newComment;
-    
-        if (replyingTo && !newComment.startsWith(`@${replyingTo.username} `)) {
-          finalContent = `@${replyingTo.username} ${newComment}`;
+      let finalContent = newComment;
+      if (replyingTo && !newComment.startsWith(`@${replyingTo.username} `)) {
+        finalContent = `@${replyingTo.username} ${newComment}`;
+      }
+  
+      const payload = replyingTo
+        ? { content: finalContent, replyTo: replyingTo.commentId }
+        : { content: finalContent };
+  
+      // ✅ Ensure a unique temporary ID for each reply
+      const tempId = `temp-${Math.random().toString(36).substr(2, 9)}`;
+      const newCommentData = {
+        _id: tempId, // ✅ Unique temp ID
+        commenterId: user,
+        content: finalContent,
+        createdAt: new Date().toISOString(),
+        likesCount: 0,
+        likedBy: [],
+        replies: [],
+        isOptimistic: true,
+      };
+  
+      if (replyingTo) {
+        setReplies((prev) => ({
+          ...prev,
+          [replyingTo.commentId]: [...(prev[replyingTo.commentId] || []), newCommentData],
+        }));
+      } else {
+        setComments((prev) => [newCommentData, ...prev]);
+      }
+  
+      // ✅ Send actual request
+      const response = await axiosInstance.post(`/post/add-comment/${postId}`, payload);
+  
+      if (response.data.success) {
+        if (replyingTo) {
+          setReplies((prev) => ({
+            ...prev,
+            [replyingTo.commentId]: prev[replyingTo.commentId].map((r) =>
+              r?._id === tempId ? response.data.comment : r
+            ),
+          }));
+        } else {
+          setComments((prev) => prev.map((c) => (c._id === tempId ? response.data.comment : c)));
         }
-    
-        const payload = replyingTo
-          ? { content: finalContent, replyTo: replyingTo.commentId }
-          : { content: finalContent };
-    
-        const response = await axiosInstance.post(`/post/add-comment/${postId}`, payload);
-    
-        if (response.data.success) {
-          if (replyingTo) {
-            setReplies((prev) => ({
-              ...prev,
-              [replyingTo.commentId]: [...(prev[replyingTo.commentId] || []), response.data.reply],
-            }));
-          } else {
-            setComments((prev) => [response.data.comment, ...prev]);
-          }
-    
-          setNewComment("");
-          setReplyingTo(null);
+      } else {
+        // 🚨 Remove temporary reply if request fails
+        if (replyingTo) {
+          setReplies((prev) => ({
+            ...prev,
+            [replyingTo.commentId]: prev[replyingTo.commentId].filter((r) => r._id !== tempId),
+          }));
+        } else {
+          setComments((prev) => prev.filter((c) => c._id !== tempId));
         }
-      } catch (error) {
+      }
+    } catch (error) {
       console.error("Error adding comment:", error);
     } finally {
+      setNewComment("");
+      setReplyingTo(null);
       setLoading(false);
     }
-    
   };
+  
+  
+  
+  
+  
+  
+  
+  
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault(); // Prevents form submission if inside a form
@@ -206,15 +351,21 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
   const deleteComment = async (commentId: string) => {
     try {
       const response = await axiosInstance.delete(`/post/delete-comment/${commentId}`);
-
+  
       if (response.data.success) {
-        setComments(comments.filter((comment) => comment._id !== commentId)); // Remove comment from UI
+        setComments((prev) => prev.filter((comment) => comment._id !== commentId)); // ✅ Remove comment locally
+  
+        // ✅ Emit event to notify other users
+        if (socket) {
+          socket.emit("deleteComment", { postId, commentId });
+        }
       }
     } catch (error) {
-        triggerAnimation("error", "An error accured while deleting your comment.");
+      triggerAnimation("error", "An error occurred while deleting your comment.");
       console.error("Error deleting comment:", error);
     }
   };
+  
   const formatTimeAgo = (timestamp: string | number | Date) => {
     const now = new Date();
     const postDate = new Date(timestamp);
@@ -352,22 +503,30 @@ const TruncatedText = ({ content }: { content: string }) => {
 
 
 
+const deleteReply = async (commentId: string, replyId: string) => {
+  try {
+    const response = await axiosInstance.delete(`/post/delete-reply/${commentId}/${replyId}`);
 
-  const deleteReply = async (commentId: string, replyId: string) => {
-    try {
-      const response = await axiosInstance.delete(`/post/delete-reply/${commentId}/${replyId}`);
-      if (response.data.success) {
-        setReplies((prev) => ({
-          ...prev,
-          [commentId]: prev[commentId].filter((reply) => reply._id !== replyId),
-        }));
+    if (response.data.success) {
+      // ✅ Update local state to mark the reply as deleted
+      setReplies((prev) => ({
+        ...prev,
+        [commentId]: prev[commentId].map((reply) =>
+          reply?._id === replyId ? { ...reply, isDeleted: true } : reply
+        ),
+      }));
 
+      // ✅ Emit event to notify other users in the post room
+      if (socket) {
+        socket.emit("deleteReply", { postId, commentId, replyId });
       }
-    } catch (error) {
-      console.error("Error deleting reply:", error);
-      triggerAnimation("error", "An error accured while deleting your reply.");
     }
-  };
+  } catch (error) {
+    console.error("Error deleting reply:", error);
+    triggerAnimation("error", "An error occurred while deleting your reply.");
+  }
+};
+
   const commentRef = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
@@ -496,14 +655,14 @@ const TruncatedText = ({ content }: { content: string }) => {
       <CommentSkeleton />
     </div>
   ) :
-        comments.length === 0 && postOwner?._id!= user?._id ? (
+        mergedComments.length === 0 && postOwner?._id!= user?._id ? (
           <p className="text-xs text-gray-500 flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-megaphone-fill" viewBox="0 0 16 16">
   <path d="M13 2.5a1.5 1.5 0 0 1 3 0v11a1.5 1.5 0 0 1-3 0zm-1 .724c-2.067.95-4.539 1.481-7 1.656v6.237a25 25 0 0 1 1.088.085c2.053.204 4.038.668 5.912 1.56zm-8 7.841V4.934c-.68.027-1.399.043-2.008.053A2.02 2.02 0 0 0 0 7v2c0 1.106.896 1.996 1.994 2.009l.496.008a64 64 0 0 1 1.51.048m1.39 1.081q.428.032.85.078l.253 1.69a1 1 0 0 1-.983 1.187h-.548a1 1 0 0 1-.916-.599l-1.314-2.48a66 66 0 0 1 1.692.064q.491.026.966.06"/>
 </svg>
              Be the first one to comment and hype <span className="capitalize">{postOwner.firstName}!</span></p>
         ) : (
-            comments.slice(0, visibleCount).map((comment) => {
+          mergedComments.slice(0, visibleCount).map((comment) => {
             const commenter = comment?.commenterId; 
             const isLiked = comment.likedBy.includes(user?._id);// Ensure commenterId exists
 
@@ -590,84 +749,72 @@ const TruncatedText = ({ content }: { content: string }) => {
       </div>
 
       {/* Replies Section */}
-      {replies[comment._id]?.length > 0 && (
-        <div className="mt-2">
-          {replies[comment._id].map((reply) => (
-            <>
-            <motion.div key={reply._id} className="flex items-start gap-1.5 mt-2">
-                    <CustomLink href={`/p/${commenter?.username}`}>
-              <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
-                <AvatarImage src={reply?.commenterId?.avatar || "/default-avatar.png"} alt="User Avatar" />
-                <AvatarFallback className="bg-gray-300"></AvatarFallback>
-              </Avatar>
-              </CustomLink>
-<div>
-<div className="bg-[#f5f5f5] px-3 py-2 rounded-xl">
-                <div className="flex items-center gap-1">
-                <CustomLink href={`/p/${commenter?.username}`}>
-                  <p className="text-sm font-normal capitalize">
-                    {reply.commenterId?.firstName || "Unknown"} {reply.commenterId?.lastName || ""}
-                  </p>
-                  </CustomLink>
-                  <div className="h-1 w-1 rounded-full bg-[#ff5757]"></div>
-                  <p className="text-[11px] text-[#ff5757]">{formatTimeAgo(reply.createdAt)}</p>
-                </div>
-                {reply.includesBadWords && (
-    <p className="text-red-500 text-xs italic">Reply filtered due to violence.</p>
-  )}
-  <TruncatedText content={reply.content} />
-
-              </div>
-              <div className="flex items-center gap-1.5 justify-start mt-0.5">
-                          <button
-              onClick={() => handleReplyToReply(comment._id, reply.commenterId?.username)}
-              className="text-[12px] text-gray-600 flex items-center gap-1 cursor-pointer"
-            >
-              <Reply className="h-3.5 w-3.5" /> Reply
-            </button>
-            {reply.commenterId?._id != user?._id && (
-                            <>
-                            <div className="h-1 w-1 bg-gray-600 rounded-full"></div>
-                            <button className="text-[12px] text-gray-600 cursor-pointer flex items-center gap-1" >
-                      <Flag className="h-3 w-3" /> Report
-                    </button>
-                            </>
-                )}
-                          {reply.commenterId?._id === user?._id && (
-                            <>
-                            <div className="h-1 w-1 bg-gray-600 rounded-full"></div>
-                            <button className="text-[12px] text-gray-600 cursor-pointer flex items-center gap-1"  onClick={() => deleteReply(comment._id, reply._id)}>
-                      <Trash2 className="h-3 w-3" /> Delete
-                    </button>
-                            </>
-                )}
-                                                {user?.isAdmin && (
-<>
-<div className="h-1 w-1 bg-gray-600 rounded-full"></div>
-<button className="text-[12px] text-[#ff5757] cursor-pointer flex items-center gap-1"  onClick={() => deleteReply(comment._id, reply._id)}>
-                      <Shield className="h-3 w-3 text-[#ff5757]" fill="#ff5757"/> Delete
-                    </button>
-</>
-        )}
-                    </div>
-</div>
-            </motion.div>
-
-            </>
-          ))}
-{showMoreReplies[comment._id]?.hasMore && (
-  <button
-    onClick={() => fetchReplies(comment._id)} // Fetch next 10 replies
-        className="text-gray-500 text-[12.5px] cursor-pointer underline"
-    disabled={loadingReplies[comment._id]}
-  >
-
-    {loadingReplies[comment._id] ? <div className="flex items-center gap-1"><Loader2 className="animate-spin h-3 w-3"/> Loading please wait...</div> : "Load more replies..."}
-  </button>
-)}
-
+      {mergedReplies[comment._id]?.filter(reply => reply && reply._id && !reply.isDeleted).map((reply) => (
+  <motion.div key={reply?._id} className="flex items-start gap-1.5 mt-2">
+    <CustomLink href={`/p/${reply?.commenterId?.username}`}>
+      <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
+        <AvatarImage src={reply?.commenterId?.avatar || "/default-avatar.png"} alt="User Avatar" />
+        <AvatarFallback className="bg-gray-300"></AvatarFallback>
+      </Avatar>
+    </CustomLink>
+    <div>
+      <div className="bg-[#f5f5f5] px-3 py-2 rounded-xl">
+        <div className="flex items-center gap-1">
+          <CustomLink href={`/p/${reply?.commenterId?.username}`}>
+            <p className="text-sm font-normal capitalize">
+              {reply?.commenterId?.firstName || "Unknown"} {reply?.commenterId?.lastName || ""}
+            </p>
+          </CustomLink>
+          <div className="h-1 w-1 rounded-full bg-[#ff5757]"></div>
+          <p className="text-[11px] text-[#ff5757]">{formatTimeAgo(reply?.createdAt)}</p>
         </div>
-      )}
+        {reply?.includesBadWords && (
+          <p className="text-red-500 text-xs italic">Reply filtered due to violence.</p>
+        )}
+        <TruncatedText content={reply?.content} />
+      </div>
+      <div className="flex items-center gap-1.5 justify-start mt-0.5">
+        <button
+          onClick={() => handleReplyToReply(comment._id, reply?.commenterId?.username)}
+          className="text-[12px] text-gray-600 flex items-center gap-1 cursor-pointer"
+        >
+          <Reply className="h-3.5 w-3.5" /> Reply
+        </button>
+        {reply?.commenterId?._id != user?._id && (
+          <>
+            <div className="h-1 w-1 bg-gray-600 rounded-full"></div>
+            <button className="text-[12px] text-gray-600 cursor-pointer flex items-center gap-1">
+              <Flag className="h-3 w-3" /> Report
+            </button>
+          </>
+        )}
+        {reply?.commenterId?._id === user?._id && (
+          <>
+            <div className="h-1 w-1 bg-gray-600 rounded-full"></div>
+            <button
+              className="text-[12px] text-gray-600 cursor-pointer flex items-center gap-1"
+              onClick={() => deleteReply(comment._id, reply?._id)}
+            >
+              <Trash2 className="h-3 w-3" /> Delete
+            </button>
+          </>
+        )}
+        {user?.isAdmin && (
+          <>
+            <div className="h-1 w-1 bg-gray-600 rounded-full"></div>
+            <button
+              className="text-[12px] text-[#ff5757] cursor-pointer flex items-center gap-1"
+              onClick={() => deleteReply(comment._id, reply?._id)}
+            >
+              <Shield className="h-3 w-3 text-[#ff5757]" fill="#ff5757" /> Delete
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  </motion.div>
+))}
+
 
 
 

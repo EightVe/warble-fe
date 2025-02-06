@@ -8,14 +8,15 @@ interface Notification {
   _id: string;
   userId: string;
   senderId: string;
-  type: "CommentLike" | "CommentReply" | "CommentPost" | "PostLike" | "System" | "ReplyToReply" | "MentionReply" ;
+  type: "CommentLike" | "CommentReply" | "CommentPost" | "PostLike" | "System" | "ReplyToReply" | "MentionReply" | "commentDeleted" | "replyDeleted";
   title: string;
   description: string;
   userAvatar: string;
   read: boolean;
+  forceOpen?: boolean;
+  AdminAnnouncement?: string;
   createdAt: string;
 }
-
 // ✅ Online user tracking interface
 interface OnlineUser {
   userId: string;
@@ -30,9 +31,12 @@ interface SocketContextType {
   isAway: boolean;
   onlineUsers: OnlineUser[];
   notifications: Notification[];
+  forceOpenNotifications: Notification[];
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
-  realTimeComments?: Record<string, any[]>; // ✅ Add this
-  realTimeReplies?: Record<string, any[]>; // ✅ Add this
+  setForceOpenNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  comments?: Record<string, any[]>; // ✅ Add this
+  replies?: Record<string, any[]>; // ✅ Add this
+  notificationLoading: boolean;
 }
 
 // ✅ Import notification sounds
@@ -59,10 +63,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [isAway, setIsAway] = useState<boolean>(false);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [forceOpenNotifications, setForceOpenNotifications] = useState<Notification[]>([]);
   const [fetchedFromAPI, setFetchedFromAPI] = useState<boolean>(false); // ✅ Prevent duplicate fetching
-  const [realTimeComments, setRealTimeComments] = useState<Record<string, any[]>>({});
-  const [realTimeReplies, setRealTimeReplies] = useState<Record<string, any[]>>({});
-  
+  const [comments, setComments] = useState<Record<string, any[]>>({});
+  const [replies, setReplies] = useState<Record<string, any[]>>({});
+  const [notificationLoading, setNotificationLoading] = useState<boolean>(true); // ✅ New state to track fetching
   // ✅ Store all sounds in an array
   const notificationSounds = [sound1, sound2, sound3,sound4,sound5,sound6,sound7,sound8,sound9,sound10];
 
@@ -103,23 +108,75 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       console.log("🟢 Online Users Updated:", users);
       setOnlineUsers(users);
     });
+   // In SocketProvider
+   newSocket.on("newComment", (data) => {
+    console.log("📩 [WebSocket] New Comment Received:", data);
 
-    newSocket.on("newComment", (data) => {
-      console.log("📩 [WebSocket] New Comment Received:", data);
-      setRealTimeComments((prev) => ({
-        ...prev,
-        [data.postId]: [...(prev[data.postId] || []), data.comment],
-      }));
+    setComments((prev) => {
+      const postComments = prev[data.postId] || []; // Get existing comments for the post
+      const existingComment = postComments.find((comment) => comment._id === data.comment._id);
+    
+      if (!existingComment) {
+        return {
+          ...prev,
+          [data.postId]: [data.comment, ...postComments], // ✅ Append to the correct post ID
+        };
+      }
+      return prev; // Avoid duplicates
     });
     
-    newSocket.on("newReply", (data) => {
-      console.log("📩 [WebSocket] New Reply Received:", data);
-      setRealTimeReplies((prev) => ({
-        ...prev,
-        [data.commentId]: [...(prev[data.commentId] || []), data.reply],
-      }));
+  });
+
+  newSocket.on("newReply", (data) => {
+    console.log("📩 [WebSocket] New Reply Received:", data);
+
+    setReplies((prev) => {
+      const commentReplies = prev[data.commentId] || [];
+      const existingReply = commentReplies.find((reply) => reply._id === data.reply._id);
+    
+      if (!existingReply) {
+        return {
+          ...prev,
+          [data.commentId]: [...commentReplies, data.reply], // ✅ Add to correct comment
+        };
+      }
+      return prev; // Prevent duplication
     });
     
+  });
+  newSocket.on("commentDeleted", ({ commentId }) => {
+    console.log(`🗑️ Received commentDeleted event: ${commentId}`);
+    
+    setComments((prev) => {
+      // ✅ Find post containing the deleted comment
+      const updatedPosts = Object.keys(prev).reduce((acc, postId) => {
+        acc[postId] = prev[postId].filter((comment) => comment._id !== commentId);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      return updatedPosts;
+    });
+  });
+
+  // ✅ 🔥 Listen for reply deletions
+  newSocket.on("replyDeleted", ({ postId, commentId, replyId }) => {
+    console.log(`🗑️ [CLIENT] Reply deleted: ${replyId} under Comment: ${commentId} in Post: ${postId}`);
+  
+    setReplies((prev) => {
+      if (!prev[commentId]) {
+        console.warn(`⚠️ [CLIENT] No replies found for comment: ${commentId}`);
+        return prev;
+      }
+  
+      return {
+        ...prev,
+        [commentId]: prev[commentId].filter((reply) => reply._id !== replyId),
+      };
+    });
+  });
+  
+  
+  
     // ✅ Fetch notifications from API only once
     const fetchNotifications = async () => {
       if (!fetchedFromAPI) {
@@ -132,23 +189,33 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         }
       }
     };
-
+    const fetchForceOpenNotifications = async () => {
+      try {
+        const { data } = await axiosInstance.get<Notification[]>(`/notifications/force-open/${user._id}`);
+        setForceOpenNotifications(data);
+        setNotificationLoading(false); // ✅ Set loading false after fetching
+      } catch (error) {
+        console.error("❌ Error fetching force-open notifications:", error);
+        setNotificationLoading(false);
+      }
+    };
     fetchNotifications();
-
+    fetchForceOpenNotifications();
     // ✅ Handle real-time notifications
     newSocket.on("newNotification", (newNotification: Notification | Notification[]) => {
       console.log("🔔 New real-time notification received:", newNotification);
 
       playRandomSound(); // ✅ Play notification sound
 
-      setNotifications((prev) => {
-        // ✅ Prevent duplicate notifications
-        if (Array.isArray(newNotification)) {
-          return [...newNotification.filter(n => !prev.some(p => p._id === n._id)), ...prev];
+      if (Array.isArray(newNotification)) {
+        setNotifications((prev) => [...newNotification, ...prev]);
+      } else {
+        if (newNotification.forceOpen) {
+          setForceOpenNotifications((prev) => [newNotification, ...prev]);
         } else {
-          return prev.some(n => n._id === newNotification._id) ? prev : [newNotification, ...prev];
+          setNotifications((prev) => [newNotification, ...prev]);
         }
-      });
+      }
     });
 
     // ✅ Detect when the user switches tabs (away/back)
@@ -171,7 +238,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   }, [user, fetchedFromAPI]);
 
   return (
-    <SocketContext.Provider value={{ socket, isAway, onlineUsers, notifications, setNotifications, realTimeComments ,realTimeReplies }}>
+    <SocketContext.Provider value={{ socket, isAway, onlineUsers, notifications, setNotifications, comments ,replies, forceOpenNotifications ,setForceOpenNotifications,notificationLoading  }}>
       {children}
     </SocketContext.Provider>
   );
