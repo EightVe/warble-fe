@@ -54,7 +54,7 @@ export default function LikeFunctionality({ postId, initialLikes }: LikeFunction
   };
 
   return (
-    <button onClick={toggleLike} className="flex items-center gap-1 cursor-pointer">
+    <button onClick={toggleLike} className="w-full flex items-center justify-center gap-1 cursor-pointer hover:bg-gray-100 transition-all duration-150 px-3 py-1.5 rounded-full" disabled={loading}>
       {isFetching ? (
         // Skeleton for initial loading
         <div className="h-4 w-8 bg-gray-300 animate-pulse rounded-md"></div>
@@ -63,10 +63,10 @@ export default function LikeFunctionality({ postId, initialLikes }: LikeFunction
         <div className="flex items-center gap-1">
           <div className="h-4 w-8 bg-gray-300 animate-pulse rounded-md"></div>
         </div>
-      ) : (
+      ) :  (
         <>
           <Heart className={`h-4 w-4 ${liked ? "text-[#ff5757] fill-[#ff5757]" : ""}`} />
-          <span>{likes}</span>
+          <span className="hidden md:flex ">{liked ? "Liked" : "Like"}</span>
         </>
       )}
     </button>

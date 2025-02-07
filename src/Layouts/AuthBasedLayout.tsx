@@ -1,8 +1,8 @@
 import { useContext, useEffect } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Loader } from 'lucide-react';
-import AuthBG from "@/assets/img/bg7.webp";
+import { Loader, Loader2 } from 'lucide-react';
+import AuthBG from "@/assets/img/mainLogo.png";
 import { useNavigate } from 'react-router-dom';
 const AuthBasedLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, isGettingUserInfo, isRefreshingToken } = useContext(AuthContext) || {};
@@ -28,15 +28,18 @@ const AuthBasedLayout = ({ children }: { children: React.ReactNode }) => {
     }
 
     return (
-      <div className="h-screen w-full fixed overflow-hidden z-50 top-0 flex gap-2 justify-center items-center bg-[#0c0c14]">
-        <Loader className="h-6 w-6 animate-spin text-white" />
-        <p className='text-gray-200 text-xs'>{message}</p>
+      <div className="h-screen w-full fixed overflow-hidden z-50 top-0 flex gap-2 justify-center items-center bg-[#edeef0] flex-col">
+        <div className='relative flex items-center justify-center'>
         <img 
           src={AuthBG} 
           alt="logo" 
-          className="object-cover opacity-[0.05] absolute inset-0 -z-5 "
+          className="object-cover opacity-65 bg-[#ffffffad] rounded-full" height={99} width={99}
         />
+        <Loader2 className='text-[#ff5757a0] animate-spin h-32 w-32 stroke-1 absolute -inset-4'/>
+        </div>
+        <p className='text-xs text-gray-500'>{message}</p>
         <div className="glowing-div absolute top-32 right-64 opacity-35 lg:opacity-15 h-96 rotate-45"></div>
+
         <div className="glowing-div absolute top-0 h-96 opacity-35 lg:opacity-15"></div>
         <div className="glowing-div absolute bottom-0 left-36 opacity-35 lg:opacity-15 h-96 rotate-12"></div>
       </div>

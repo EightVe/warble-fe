@@ -4,7 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import CustomLink from '@/hooks/useLink';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, X } from 'lucide-react';
+import { Heart, Loader2, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
@@ -41,40 +41,15 @@ export default function FetchRelatedLikes({ postId }: FetchRelatedLikesProps) {
         fetchLikes();
     }, [postId]);
 
-    if (likes.length === 1) return null;
-
     return (
         <>
-            <div className="flex space-x-1 mt-2 items-center">
-            {likes.length > 1 && (
-                <span className='text-xs text-gray-600'>Liked by</span>
-            )
-            }
-
-                {likes.slice(0, 1).map((like, index) => (
-                    <TooltipProvider delayDuration={200} key={index}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
-                                    <CustomLink href={`/p/${like.likerId.username}`}>
-                                        <Avatar className='h-6 w-6'>
-                                            <AvatarImage src={like.likerId.avatar} alt="User Avatar" />
-                                            <AvatarFallback className='bg-gray-300'></AvatarFallback>
-                                        </Avatar>
-                                    </CustomLink>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="center" sideOffset={5} className="p-2 py-1 bg-[#fcfcfc] border-gray-300 shadow-none font-normal text-gray-600 text-xs">
-                                {like.likerId.firstName} {like.likerId.lastName}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                ))}
-                {likes.length > 1 && (
-                    <span className="text-xs text-gray-500 cursor-pointer" onClick={() => setShowMoreLikes(true)}>
-                      +{likes.length - 1} more
+            <div className="flex space-x-1 mt-2 items-center cursor-pointer group transition-all duration-150" onClick={() => setShowMoreLikes(true)}>
+                    <>
+                                    <Heart  className='h-3.5 w-3.5 text-gray-500 group-hover:text-[#ff5757ae]'/>
+                    <span className="text-xs text-gray-500 cursor-pointer group-hover:text-[#ff5757ae]">
+                      {likes.length}
                     </span>
-                )}
+                    </>
             </div>
 
             <AnimatePresence>

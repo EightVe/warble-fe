@@ -37,13 +37,26 @@ background: radial-gradient(circle, rgba(12,12,20,1) 0%, rgba(15,18,27,1) 30%, r
   .glowing-div {
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle, #ffea63c7, rgba(255, 255, 255, 0.1), transparent);
-    box-shadow: 0 0 150px #fbff93c1, /* Outer green glow */
-                0 0 300px #eeff97, /* Second layer glow */
+    background: radial-gradient(circle, #ff078f37, rgba(255, 255, 255, 0.1), transparent);
+    box-shadow: 0 0 150px #ff575763, /* Outer green glow */
+                0 0 300px #ff29424c, /* Second layer glow */
                 0 0 450px rgba(255, 255, 255, 0.1); /* Subtle white glow for brightness */
     filter: blur(30px); /* Blurring the glow for smoothness */
    
   }
+  @keyframes slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  .animate-slide {
+    animation: slide 1.5s infinite linear;
+  }
+  
   .image-container {
     position: relative;
     width: 100%;

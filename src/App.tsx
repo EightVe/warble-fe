@@ -31,7 +31,7 @@ const AppContent = () => {
 
   const { user, loading} = useContext(AuthContext) || {};
   const { forceOpenNotifications, setForceOpenNotifications ,notificationLoading} = useSocket();
-  if (notificationLoading) {
+  if (notificationLoading && user) {
     return null;
   }
   if (forceOpenNotifications.length > 0 && user) {

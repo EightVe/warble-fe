@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import axios from "axios";
-import { Heart, Loader, Loader2, MapPin, MessageSquareText, Plus, Share2, X } from "lucide-react";
+import { Forward, Heart, Loader, Loader2, MapPin, MessageSquareHeart, MessageSquareShare, MessageSquareText, Plus, Send, Share, Share2, X } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -185,7 +185,7 @@ useEffect(() => {
             {posts.map((post) => (
               <>
               <div key={post._id} className="mb-4 border-0 shadow-none bg-[#fff] rounded-2xl">
-                <div className="p-4">
+                <div className="p-4 pb-1.5">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-1.5">
                     <PostCardHover data={post.postOwner}>
@@ -583,15 +583,37 @@ useEffect(() => {
 
 
 
-                  <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
-                  <LikeFunctionality postId={post._id} initialLikes={post.likes} />
-       <button className="flex items-center gap-1 cursor-pointer" onClick={() => setShowComments(showComments === post._id ? null : post._id)}>
-                      <MessageSquareText className="h-4 w-4" />
-                      <span>{post.comments.length}</span>
+                  <div className="mt-4 flex items-center gap-4 text-sm text-gray-500 justify-between">
+                  <FetchRelatedLikes postId={post._id}/>
+<div className="flex items-center gap-1">
+{post.comments.length > 0 ? 
+                   <p className="flex items-center gap-1 text-xs cursor-pointer hover:text-[#ff5757ae] transition-all duration-150" onClick={() => setShowComments(showComments === post._id ? null : post._id)}>
+                     <span className="flex items-center gap-0.5">{post.comments.length}<span>{post.comments.length > 1 ? "Comments" : "Comment"}</span></span>
+                    </p>
+                    : null}
+                    <div className="h-1 w-1 rounded-full bg-gray-400"></div>
+                    <button className="flex items-center gap-1 text-xs">
+                      <span>{post.shares} Reposts</span>
                     </button>
-                    <button className="flex items-center gap-1">
-                      <Share2 className="h-4 w-4" />
-                      <span>{post.shares}</span>
+</div>
+                  </div>
+                  <Separator className="bg-gray-200 my-1"/>
+                  <div className="flex items-center justify-between px-2 py-1 text-sm text-gray-500 gap-2">
+                  <LikeFunctionality postId={post._id} initialLikes={post.likes} />
+                  <p className="text-gray-200">|</p>
+                  <button className="w-full flex  flex-col md:flex-row  justify-center items-center gap-1 cursor-pointer hover:bg-gray-100 transition-all duration-150 px-3 py-1.5 rounded-full" onClick={() => setShowComments(showComments === post._id ? null : post._id)}>
+                    <MessageSquareHeart className=" h-4 w-4"/>
+                     <span className="hidden md:flex ">Comment</span>
+                    </button>
+                    <p className="text-gray-200">|</p>
+                    <button className="w-full flex  flex-col md:flex-row  justify-center items-center gap-1 cursor-pointer hover:bg-gray-100 transition-all duration-150 px-3 py-1.5 rounded-full">
+                      <Forward className=" h-4 w-4" />
+                     <span className="hidden md:flex ">Repost</span>
+                    </button>
+                    <p className="text-gray-200">|</p>
+                    <button className="w-full flex  flex-col md:flex-row  justify-center items-center gap-1 cursor-pointer hover:bg-gray-100 transition-all duration-150 px-3 py-1.5 rounded-full">
+                      <MessageSquareShare className=" h-3.5 w-3.5" />
+                     <span className="hidden md:flex ">Share</span>
                     </button>
                   </div>
                   {showComments === post._id && (
@@ -605,9 +627,6 @@ useEffect(() => {
                                 postUID={post?.postUID}
                             />
                         )}
-
-
-<FetchRelatedLikes postId={post._id}/>
                 </div>
               </div>
                 </>
