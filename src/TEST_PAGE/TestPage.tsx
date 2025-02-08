@@ -1,4 +1,5 @@
 import { useSocket } from "@/contexts/SocketContext";
+import LinkedInComment from "./Comment";
 
 export default function TestPage() {
   const { onlineUsers = [] } = useSocket(); // Ensure default empty array
@@ -22,6 +23,7 @@ export default function TestPage() {
           ))}
         </ul>
       )}
+      <LinkedInComment />
     </div>
   );
 }

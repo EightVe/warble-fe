@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from "react";
 import axiosInstance from "@/lib/axiosInstance";// Import AuthContext
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { CheckCircleIcon, Reply, Send, Trash2, Heart, Flag, Smile, Shield, Loader2 } from "lucide-react";
+import { CheckCircleIcon, Reply, Send, Trash2, Heart, Flag, Smile, Shield, Loader2, RotateCcw, RefreshCcw } from "lucide-react";
 import { AuthContext } from "@/contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
@@ -17,13 +17,19 @@ import CustomLink from "@/hooks/useLink";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "react-router-dom";
 import { useSocket } from "@/contexts/SocketContext";
-  
+import EmojiPicker from 'emoji-picker-react';
+import CommentReplyThreeDotsAction from "@/(Protected)/Feed/functions/CommentReplyThreeDotsAction";
 interface CommentProps {
   postId: string;
   postOwner:any;
   commentsFetched:any;
   setCommentsFetched: React.Dispatch<React.SetStateAction<Record<string, boolean>>>; // ✅ Add this
   postUID?: string;
+}
+interface CommentType {
+  _id: string;
+  content: string;
+  includesBadWords: boolean;
 }
 export default function SinglePostCommentsFetch({ postId, postOwner,commentsFetched,postUID,setCommentsFetched }: CommentProps) {
   const { user } = useContext(AuthContext) || {}; // Get current logged-in user
@@ -44,7 +50,26 @@ const [hasMore, setHasMore] = useState(true); // Check if more comments exist
   const [replies, setReplies] = useState<{ [key: string]: any[] }>({});
   const [loadingReplies, setLoadingReplies] = useState<{ [key: string]: boolean }>({});
   const [showMoreReplies, setShowMoreReplies] = useState<{ [key: string]: { hasMore: boolean; page: number } }>({});
-
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const handleEmojiClick = (emojiObject: any) => {
+    setNewComment((prev) => prev + emojiObject.emoji); // Append emoji to input
+  };
+  const [pickerSize, setPickerSize] = useState({ width: 250, height: 300 });
+  useEffect(() => {
+    const updateSize = () => {
+      if (window.innerWidth < 768) { // For small screens (md and below)
+        setPickerSize({ width: 250, height: 300 });
+      } else { // For larger screens (md+)
+        setPickerSize({ width: 350, height: 400 });
+      }
+    };
+  
+    updateSize(); // Run initially
+    window.addEventListener("resize", updateSize); // Listen for screen size changes
+  
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+  
   const [replyingTo, setReplyingTo] = useState<{ commentId: string; username: string } | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const { socket, comments: socketComments, replies: socketReplies } = useSocket();
@@ -61,7 +86,9 @@ useEffect(() => {
 
   console.log(`🚀 Rejoining post room on every action: ${postId}`);
   socket.emit("joinPostRoom", postId);
+  fetchComments();
 
+// ✅ Fetch replies for each comment that exists
   return () => {
     console.log(`👤 Leaving post room: ${postId}`);
     socket.emit("leavePostRoom", postId);
@@ -106,7 +133,24 @@ useEffect(() => {
       });
     };
     
-    
+    const handleCensoredReply = (data: { postId: string; commentId: string; reply: any }) => {
+      if (data.postId !== postId || !data.reply || !data.reply._id) return;
+  
+      const censoredContent = "This reply was filtered due to inappropriate content."; // 🚀 Static message for censorship
+  
+      setReplies((prev) => {
+        const existingReplies = prev[data.commentId] || [];
+        const validReplies = existingReplies.filter(r => r && r._id);
+        const existingIds = new Set(validReplies.map((r) => r._id));
+  
+        if (existingIds.has(data.reply._id)) return prev;
+  
+        return {
+          ...prev,
+          [data.commentId]: [...validReplies, { ...data.reply, content: !user?.isAdmin ? censoredContent : data.reply.content }],
+        };
+      });
+    };
     const handleCommentDeleted = ({ postId: receivedPostId, commentId }: { postId: string; commentId: string }) => {
       if (receivedPostId !== postId) return;
   
@@ -128,14 +172,15 @@ useEffect(() => {
     socket.on("replyDeleted", handleReplyDeleted);
     socket.on("newComment", handleNewComment);
     socket.on("newReply", handleNewReply);
-  
+    socket.on("CommentReplyBadWord", handleCensoredReply);
     return () => {
       socket.off("newComment", handleNewComment);
       socket.off("newReply", handleNewReply);
       socket.off("deleteComment", handleCommentDeleted);
       socket.off("replyDeleted", handleReplyDeleted);
+      socket.off("CommentReplyBadWord", handleCensoredReply);
     };
-  }, [socket, postId]);
+  }, [socket, postId,replies,comments]);
   
   
 
@@ -169,35 +214,43 @@ const handleReplyToReply = (commentId: string, replyUsername: string) => {
   const fetchComments = async (isInitialLoad = false): Promise<void> => {
     if (!hasMore || fetchingRef.current) return;
     fetchingRef.current = true;
-
-    if (isInitialLoad) setIsLoading(true);
-    else setIsFetchingMore(true);
-
-    try {
-        const response = await axiosInstance.get(`/post/get-comments/${postId}`, {
-            params: { page, limit: fetchLimit, ...(commentIdFromUrl && { commentId: commentIdFromUrl }) },
-        });
-
-        if (response.data.success) {
-            setComments((prev: any[]) => {
-                const existingIds = new Set(prev.map((comment: any) => comment._id));
-                const newComments = response.data.comments.filter((comment: any) => !existingIds.has(comment._id));
-                return [...prev, ...newComments];
-            });
-
-            response.data.comments.forEach((comment: any) => fetchReplies(comment._id));
-
-            setPage((prevPage: number) => prevPage + 1);
-            setHasMore(response.data.hasMore);
-        }
-    } catch (error) {
-        console.error(`❌ Error fetching comments for Post ID: ${postId}`, error);
-    } finally {
-        fetchingRef.current = false;
-        setIsLoading(false);
-        setIsFetchingMore(false);
+  
+    if (isInitialLoad) {
+      setIsLoading(true); // Full-page loading
+    } else {
+      setIsFetchingMore(true); // "Show More" loader
     }
-};
+  
+    try {
+      const response = await axiosInstance.get(`/post/get-comments/${postId}`, {
+        params: { page, limit: fetchLimit, userId: user?._id  },
+      });
+  
+      if (response.data.success) {
+        setComments((prev: any[]) => {
+          const existingIds = new Set(prev.map((comment: any) => comment._id));
+          const newComments = response.data.comments.filter((comment: any) => !existingIds.has(comment._id));
+  
+          return [...prev, ...newComments]; // Append only new ones
+        });
+  
+        // 🚀 Fetch replies for each comment automatically
+        response.data.comments.forEach((comment: any) => {
+          fetchReplies(comment._id);
+        });
+  
+        setPage((prevPage: number) => prevPage + 1);
+        setHasMore(response.data.hasMore);
+      }
+    } catch (error: any) {
+      console.error(`❌ Error fetching comments for Post ID: ${postId}`, error);
+    } finally {
+      fetchingRef.current = false;
+      setIsLoading(false);
+      setIsFetchingMore(false);
+    }
+  };
+
   
   
   
@@ -476,30 +529,42 @@ useEffect(() => {
         setLoadingReplies((prev) => ({ ...prev, [commentId]: false }));
     }
 };
-
-  
-  
 const MAX_LENGTH = 300;
 
 const TruncatedText = ({ content }: { content: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const shouldTruncate = content.length > MAX_LENGTH;
+  const mentionRegex = /@([\w\d_]+)/g;
+
+  const formattedContent = content.split(mentionRegex).map((part, index) => {
+    if (index % 2 !== 0) {
+      return (
+        <CustomLink key={index} href={`/p/${part}`} className="text-[#ff5757bd] hover:text-gray-500 transition-colors duration-150 cursor-pointer">
+          @{part}
+        </CustomLink>
+      );
+    }
+    return part;
+  });
 
   return (
-    <div className="text-sm text-gray-800 break-words break-all whitespace-normal">
-      {isExpanded ? content : `${content.slice(0, MAX_LENGTH)}${shouldTruncate ? "..." : ""}`}
-      
+    <div className="text-sm text-gray-600 break-words break-all whitespace-normal">
+      {content === "This reply was filtered due to inappropriate content." ? (
+        <p className="text-[#ff5757] text-xs italic">{content}</p>
+      ) : isExpanded ? (
+        formattedContent
+      ) : (
+        formattedContent.slice(0, MAX_LENGTH)
+      )}
       {shouldTruncate && (
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[#ff5757] text-xs ml-1 cursor-pointer"
-        >
+        <button onClick={() => setIsExpanded(!isExpanded)} className="text-[#ff5757] text-xs ml-1 cursor-pointer">
           {isExpanded ? "Show Less" : "Show More"}
         </button>
       )}
     </div>
   );
 };
+
 
 
 
@@ -625,7 +690,7 @@ const deleteReply = async (commentId: string, replyId: string) => {
               className="absolute top-[-21px] left-0 text-xs text-gray-700 bg-[#ffffffc7] px-2 py-0.5 rounded-sm border border-gray-200"
             >
               Replying to <span className="text-gray-700 lowercase">@{replyingTo.username}</span>
-              <button onClick={cancelReply} className="text-[#ff5757] text-xs ml-1 cursor-pointer">Discard</button>
+              <button onClick={cancelReply} className="text-[#ff5757] text-xs ml-1 cursor-pointer">Cancel</button>
             </motion.div>
           )}
 
@@ -639,9 +704,23 @@ const deleteReply = async (commentId: string, replyId: string) => {
             className="w-full bg-[#f3f3f3] border-gray-200 focus:outline-0 text-gray-700 text-sm h-9 rounded-full pl-4 pr-4"
           />
         </div>
-        <Button disabled={loading} className="px-3 hover:bg-gray-400/20 rounded-full">
-          <Smile className="h-6 w-6 text-gray-800" />
-        </Button>
+        <div className="relative">
+  <Button
+    disabled={loading}
+    className="px-3 hover:bg-gray-400/20 rounded-full"
+    onClick={() => setShowEmojiPicker((prev) => !prev)} // Toggle picker
+  >
+    <Smile className="h-6 w-6 text-gray-800" />
+  </Button>
+
+  {/* Emoji Picker (Hidden by default) */}
+  {showEmojiPicker && (
+    <div className="absolute top-12 right-0 z-50">
+      <EmojiPicker onEmojiClick={handleEmojiClick} width={pickerSize.width} height={pickerSize.height}/>
+    </div>
+  )}
+</div>
+
         <Button onClick={addComment} disabled={loading} className="px-3 hover:bg-gray-400/20 rounded-full">
           <Send className="h-6 w-6 text-gray-800" />
         </Button>
@@ -671,39 +750,35 @@ const deleteReply = async (commentId: string, replyId: string) => {
 <Separator className="bg-[#eeeeee] " />
   <motion.div
   key={comment._id} className="flex w-full items-start gap-1.5">
-    {/* Avatar (outside the background color) */}
     <CustomLink href={`/p/${commenter?.username}`}>
     <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
       <AvatarImage src={commenter?.avatar || "/default-avatar.png"} alt="User Avatar" />
       <AvatarFallback className="bg-gray-300"></AvatarFallback>
     </Avatar>
     </CustomLink>
-    {/* Comment Content (with background color) */}
-    <div className="">
-    <div className="bg-[#f5f5f5] px-3 py-2 rounded-xl flex-1 w-fit" ref={(el) => commentRef && (commentRef.current[comment._id] = el)}>
-      {/* Name and Time */}
-      <div className="flex items-center gap-1 ">
-                <CustomLink href={`/p/${commenter?.username}`}>
-                <p className="text-sm font-normal capitalize">
+    <div className="w-full">
+    <div className="bg-[#f5f5f500] px-1 rounded-xl w-full" ref={(el) => commentRef && (commentRef.current[comment._id] = el)}>
+      <div className="flex items-center gap-1 w-full justify-between">
+                <CustomLink href={`/p/${commenter?.username}`} className="flex items-center gap-1">
+                <p className="text-sm font-normal capitalize text-gray-800">
           {commenter?.firstName || "Unknown"} {commenter?.lastName || ""}
         </p>
+        {postOwner._id === commenter._id && (
+    <p className="text-gray-700 px-1.5 rounded-sm ml-0.5 text-xs bg-gray-200">Author</p>
+  )}
                 </CustomLink>
-        <div className="h-1 w-1 rounded-full bg-[#ff5757]"></div>
-        <p className="text-[11px] text-[#ff5757]">{formatTimeAgo(comment.createdAt)}</p>
+        <div className="flex items-center gap-2">
+        <p className="text-[11px] text-gray-500">{formatTimeAgo(comment.createdAt)}</p>
+          <div><CommentReplyThreeDotsAction /></div>
+        </div>
       </div>
-      {/* Comment Text */}
       {comment.includesBadWords && (
-    <p className="text-[#ff5757] text-xs italic">Comment filtered due to violence.</p>
+          <p className="text-red-400 text-xs bg-red-50 w-fit px-1 py-1 rounded-full">Comment censored due to community guideline violations.</p>
   )}
   <TruncatedText content={comment.content} />
-
 </div>
 
-      {/* Comment Media (Image or Video) */}
-      {comment.image && <img src={comment.image} alt="Comment Image" className="rounded-md mt-2 max-w-xs" />}
-      {comment.video && (
-        <video controls src={comment.video} className="rounded-md mt-2 max-w-xs" />
-      )}
+
 
       {/* Reply and Delete Actions */}
       <div className="flex items-center gap-1.5 mt-2">
@@ -751,25 +826,32 @@ const deleteReply = async (commentId: string, replyId: string) => {
       {/* Replies Section */}
       {mergedReplies[comment._id]?.filter(reply => reply && reply._id && !reply.isDeleted).map((reply) => (
   <motion.div key={reply?._id} className="flex items-start gap-1.5 mt-2">
-    <CustomLink href={`/p/${reply?.commenterId?.username}`}>
-      <Avatar className="w-8 h-8 flex-shrink-0 mt-1">
+    <CustomLink href={`/p/${reply?.commenterId?.username}`} className="relative">
+      <Avatar className="w-8 h-8 flex-shrink-0 mt-2">
         <AvatarImage src={reply?.commenterId?.avatar || "/default-avatar.png"} alt="User Avatar" />
         <AvatarFallback className="bg-gray-300"></AvatarFallback>
       </Avatar>
+      <div className="absolute bg-[#ff57572f] h-0.5 w-3.5  rounded-full top-5.5 right-10"></div>
+      <div className="absolute bg-[#ff57572f] h-full w-0.5 rounded-full bottom-4 right-13"></div>
     </CustomLink>
-    <div>
-      <div className="bg-[#f5f5f5] px-3 py-2 rounded-xl">
-        <div className="flex items-center gap-1">
-          <CustomLink href={`/p/${reply?.commenterId?.username}`}>
-            <p className="text-sm font-normal capitalize">
+    <div className="w-full">
+      <div className="bg-[#f5f5f500] px-1 py-2 rounded-xl">
+        <div className="flex items-center gap-1 justify-between">
+          <CustomLink href={`/p/${reply?.commenterId?.username}`} className="flex items-center gap-1">
+            <p className="text-sm font-normal capitalize text-gray-800">
               {reply?.commenterId?.firstName || "Unknown"} {reply?.commenterId?.lastName || ""}
             </p>
+        {postOwner._id === reply?.commenterId?._id && (
+    <p className="text-gray-700 px-1.5 rounded-sm ml-0.5 text-xs bg-gray-200">Author</p>
+  )}
           </CustomLink>
-          <div className="h-1 w-1 rounded-full bg-[#ff5757]"></div>
-          <p className="text-[11px] text-[#ff5757]">{formatTimeAgo(reply?.createdAt)}</p>
+          <div className="flex items-center gap-2">
+        <p className="text-[11px] text-gray-500">{formatTimeAgo(reply.createdAt)}</p>
+          <div><CommentReplyThreeDotsAction /></div>
+        </div>
         </div>
         {reply?.includesBadWords && (
-          <p className="text-red-500 text-xs italic">Reply filtered due to violence.</p>
+          <p className="text-red-400 text-xs bg-red-50 w-fit px-1 py-1 rounded-full">Reply censored due to community guideline violations.</p>
         )}
         <TruncatedText content={reply?.content} />
       </div>
@@ -823,41 +905,16 @@ const deleteReply = async (commentId: string, replyId: string) => {
     </div>
   </motion.div>
 
-  {/* Success Delete Dialog */}
-  <Dialog
-    open={successDelete}
-    onOpenChange={(successDelete) => {
-      if (successDelete) setSuccessDelete(true);
-    }}
-    modal={true}
+  {showMoreReplies[comment._id]?.hasMore && (
+  <button
+    onClick={() => fetchReplies(comment._id)} // Fetch next 10 replies
+        className="text-gray-500 text-[12.5px] cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-full ml-9"
+    disabled={loadingReplies[comment._id]}
   >
-    <DialogContent className="bg-white rounded-lg shadow-lg max-w-md">
-      <DialogHeader>
-        <DialogTitle>
-          <div className="w-full flex items-center justify-center">
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 0.9 }}
-            >
-              <CheckCircleIcon className="w-12 h-12 text-green-500" />
-            </motion.div>
-          </div>
-        </DialogTitle>
-      </DialogHeader>
-      <p className="text-sm text-gray-600 text-center">
-        Your comment has been deleted!
-      </p>
-      <div className="flex items-center justify-center w-full">
-        <Button
-          onClick={() => setSuccessDelete(false)}
-          className="w-full sm:w-auto whitespace-nowrap bg-gradient-to-tr from-[#ff2941] to-[#ff078e] h-8 font-normal text-white text-[13px]"
-          size="sm"
-        >
-          Okay
-        </Button>
-      </div>
-    </DialogContent>
-  </Dialog>
+
+    {loadingReplies[comment._id] ? <div className="flex items-center gap-1"><Loader2 className="animate-spin h-4 w-4"/> Loading</div> : <div className="flex items-center gap-2"><RefreshCcw className="h-4 w-4"/> Load more replies</div>}
+  </button>
+)}
 </>
             );
             
@@ -868,10 +925,10 @@ const deleteReply = async (commentId: string, replyId: string) => {
     <div className="flex justify-start mt-3">
       <button 
         onClick={handleShowMore} 
-        className="text-gray-500 text-[12.5px] cursor-pointer underline"
+        className="text-gray-500 text-[12.5px] cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-full"
         disabled={isFetchingMore}
       >
-        {isFetchingMore ? <div className="flex items-center gap-1"><Loader2 className="animate-spin h-3 w-3"/> Loading please wait...</div> : "Show more comments..."}
+        {isFetchingMore ? <div className="flex items-center gap-1"><Loader2 className="animate-spin h-4 w-4"/> Loading</div> : <div className="flex items-center gap-2"><RefreshCcw className="h-4 w-4"/> Load more comments</div>}
       </button>
     </div>
   )}

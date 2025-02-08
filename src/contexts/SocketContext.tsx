@@ -110,40 +110,73 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
    // In SocketProvider
    newSocket.on("newComment", (data) => {
-    console.log("📩 [WebSocket] New Comment Received:", data);
-
-    setComments((prev) => {
-      const postComments = prev[data.postId] || []; // Get existing comments for the post
-      const existingComment = postComments.find((comment) => comment._id === data.comment._id);
-    
-      if (!existingComment) {
-        return {
-          ...prev,
-          [data.postId]: [data.comment, ...postComments], // ✅ Append to the correct post ID
-        };
-      }
-      return prev; // Avoid duplicates
-    });
-    
+    if (user?.isAdmin) {
+      // ✅ Admins get **uncensored** comments
+      setComments((prev) => {
+        const postComments = prev[data.postId] || [];
+        if (!postComments.find((c) => c._id === data.comment._id)) {
+          return { ...prev, [data.postId]: [data.comment, ...postComments] };
+        }
+        return prev;
+      });
+    }
   });
-
+  
+  // 🚀 Listen for censored comments (for non-admins)
+  newSocket.on("CommentReplyBadWord", (data) => {
+    if (!user?.isAdmin) {
+      if (!data.comment || !data.comment._id) {
+        console.warn("⚠️ Skipping invalid CommentReplyBadWord data:", data);
+        return;
+      }
+  
+      setComments((prev) => {
+        const postComments = prev[data.postId] || [];
+        if (!postComments.find((c) => c._id === data.comment._id)) {
+          return { ...prev, [data.postId]: [data.comment, ...postComments] };
+        }
+        return prev;
+      });
+    }
+  });
+  
+  
   newSocket.on("newReply", (data) => {
-    console.log("📩 [WebSocket] New Reply Received:", data);
-
+    if (!data.reply || !data.reply._id) {
+      console.warn("⚠️ Skipping invalid reply data:", data);
+      return;
+    }
+  
     setReplies((prev) => {
-      const commentReplies = prev[data.commentId] || [];
-      const existingReply = commentReplies.find((reply) => reply._id === data.reply._id);
-    
-      if (!existingReply) {
-        return {
-          ...prev,
-          [data.commentId]: [...commentReplies, data.reply], // ✅ Add to correct comment
-        };
-      }
-      return prev; // Prevent duplication
+      const existingReplies = prev[data.commentId] || [];
+      if (existingReplies.some((r) => r._id === data.reply._id)) return prev; // Avoid duplicates
+  
+      return {
+        ...prev,
+        [data.commentId]: [...existingReplies, data.reply], // ✅ Append instead of replacing
+      };
     });
-    
   });
+  
+  
+  // 🚀 Listen for censored replies (for non-admins)
+  newSocket.on("CommentReplyBadWord", (data) => {
+    if (!data.reply || !data.reply._id) {
+      console.warn("⚠️ Skipping invalid CommentReplyBadWord data:", data);
+      return;
+    }
+  
+    setReplies((prev) => {
+      const existingReplies = prev[data.commentId] || [];
+      if (existingReplies.some((r) => r._id === data.reply._id)) return prev; // Prevent duplicates
+  
+      return {
+        ...prev,
+        [data.commentId]: [...existingReplies, data.reply], // ✅ Append instead of replacing
+      };
+    });
+  });
+  
   newSocket.on("commentDeleted", ({ commentId }) => {
     console.log(`🗑️ Received commentDeleted event: ${commentId}`);
     

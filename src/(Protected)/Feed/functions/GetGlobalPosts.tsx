@@ -31,6 +31,7 @@ import FollowFunctionality from "./Follow_Message/FollowFunctionality";
 import { useMediaQuery } from "react-responsive";
 import MediaModal from "./images/MediaModal";
 import GeneralMediaModal from "./images/GeneralMediaModel";
+import { useSocket } from "@/contexts/SocketContext";
 // Define PostOwner interface
 interface PostOwner {
   _id: string;
@@ -77,6 +78,33 @@ interface ApiResponse {
         const [commentsFetched, setCommentsFetched] = useState<{ [key: string]: boolean }>({});
         const [loadingPosts, setLoadingPosts] = useState<boolean>(false);
 const [isFetching, setIsFetching] = useState<boolean>(false);
+            const { socket} = useSocket();
+          useEffect(() => {
+            if (!socket) return;
+          
+            const handleNewCommentOrReply = (data: { postId: string; commentsCount: number }) => {
+              // Check if any post in the array matches the postId
+              if (!posts.some((post) => post._id === data.postId)) return;
+            
+              // ✅ Update the comments count for the specific post
+              setPosts((prev) =>
+                prev.map((post) =>
+                  post._id === data.postId
+                    ? { ...post, comments: Array(data.commentsCount).fill(null) }
+                    : post
+                )
+              );
+            };
+            
+          
+            socket.on("newComment", handleNewCommentOrReply);
+            socket.on("newReply", handleNewCommentOrReply);
+          
+            return () => {
+              socket.off("newComment", handleNewCommentOrReply);
+              socket.off("newReply", handleNewCommentOrReply);
+            };
+          }, [socket, posts]);
 const fetchPosts = async () => {
   if (!hasMore || loadingPosts || fetchingRef.current) return;
   fetchingRef.current = true;
@@ -151,7 +179,7 @@ useEffect(() => {
             if (diffInSeconds < 60) return `${diffInSeconds} s`;
             if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} m`;
             if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} h`;
-            if (diffInSeconds < 172800) return "1 day ago";
+            if (diffInSeconds < 172800) return "1 d";
             if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} d`;
             if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)} w`;
             if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} m`;

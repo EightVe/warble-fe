@@ -7,7 +7,7 @@ export default function Feed() {
   return (
     <div className="min-h-screen flex flex-col bg-[#ededed]">
       <Header />
-      <div className="flex overflow-hidden xl:justify-center md:justify-center 2xl:justify-between">
+      <div className="flex overflow-hidden xl:justify-center md:justify-center 2xl:justify-between mb-16 xl:mb-0">
         <LeftSidebar />
         <main className=" w-full md:max-w-2xl">
           <FetchSinglePost />

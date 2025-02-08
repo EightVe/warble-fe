@@ -53,6 +53,7 @@
     "country-state-city": "^3.2.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
+    "emoji-picker-react": "^4.12.0",
     "fast-average-color": "^9.4.0",
     "firebase": "^11.2.0",
     "framer-motion": "^12.0.5",
