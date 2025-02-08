@@ -24,7 +24,11 @@ interface OnlineUser {
   status: "online" | "away" | "offline";
   device: "desktop" | "mobile"; // ✅ Track device type
 }
-
+interface Post {
+  _id: string;
+  likes: number;
+  commentCount: number;
+}
 // ✅ Socket context type
 interface SocketContextType {
   socket: Socket | null;
@@ -37,6 +41,8 @@ interface SocketContextType {
   comments?: Record<string, any[]>; // ✅ Add this
   replies?: Record<string, any[]>; // ✅ Add this
   notificationLoading: boolean;
+  posts:any;
+  setPosts:any;
 }
 
 // ✅ Import notification sounds
@@ -68,6 +74,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [replies, setReplies] = useState<Record<string, any[]>>({});
   const [notificationLoading, setNotificationLoading] = useState<boolean>(true); // ✅ New state to track fetching
+  const [posts, setPosts] = useState<Post[]>([]); // ✅ Store posts for live updates
   // ✅ Store all sounds in an array
   const notificationSounds = [sound1, sound2, sound3,sound4,sound5,sound6,sound7,sound8,sound9,sound10];
 
@@ -269,9 +276,36 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, fetchedFromAPI]);
-
+  useEffect(() => {
+    if (!socket) return;
+  
+    const handlePostLiked = (data: { postId: string; likes: any[] }) => {
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === data.postId ? { ...post, likes: data.likes.length } : post
+        )
+      );
+    };
+  
+    const handlePostUnliked = (data: { postId: string; likes: any[] }) => {
+      setPosts((prev) =>
+        prev.map((post) =>
+          post._id === data.postId ? { ...post, likes: data.likes.length } : post
+        )
+      );
+    };
+  
+    socket.on("postLiked", handlePostLiked);
+    socket.on("postUnliked", handlePostUnliked);
+  
+    return () => {
+      socket.off("postLiked", handlePostLiked);
+      socket.off("postUnliked", handlePostUnliked);
+    };
+  }, [socket, posts]);
+  
   return (
-    <SocketContext.Provider value={{ socket, isAway, onlineUsers, notifications, setNotifications, comments ,replies, forceOpenNotifications ,setForceOpenNotifications,notificationLoading  }}>
+    <SocketContext.Provider value={{ socket, isAway, onlineUsers, notifications, setNotifications, comments ,replies, forceOpenNotifications ,setForceOpenNotifications,notificationLoading , posts, setPosts, }}>
       {children}
     </SocketContext.Provider>
   );

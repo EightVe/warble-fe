@@ -57,6 +57,7 @@ interface Post {
   shares: number;
   locationCity?: string;
   locationCountry?: string;
+  commentCount: number;
 }
 
 // Define API response type
@@ -79,32 +80,67 @@ interface ApiResponse {
         const [loadingPosts, setLoadingPosts] = useState<boolean>(false);
 const [isFetching, setIsFetching] = useState<boolean>(false);
             const { socket} = useSocket();
-          useEffect(() => {
-            if (!socket) return;
-          
-            const handleNewCommentOrReply = (data: { postId: string; commentsCount: number }) => {
-              // Check if any post in the array matches the postId
-              if (!posts.some((post) => post._id === data.postId)) return;
+            useEffect(() => {
+              if (!socket) return;
             
-              // ✅ Update the comments count for the specific post
-              setPosts((prev) =>
-                prev.map((post) =>
-                  post._id === data.postId
-                    ? { ...post, comments: Array(data.commentsCount).fill(null) }
-                    : post
-                )
-              );
-            };
+              // ✅ Handle new comment
+              const handleNewComment = (data: { postId: string; comment: any; commentsCount: number }) => {
+                setPosts((prev) =>
+                  prev.map((post) =>
+                    post._id === data.postId
+                      ? { ...post, commentCount: data.commentsCount }
+                      : post
+                  )
+                );
+              };
             
-          
-            socket.on("newComment", handleNewCommentOrReply);
-            socket.on("newReply", handleNewCommentOrReply);
-          
-            return () => {
-              socket.off("newComment", handleNewCommentOrReply);
-              socket.off("newReply", handleNewCommentOrReply);
-            };
-          }, [socket, posts]);
+              // ✅ Handle new reply
+              const handleNewReply = (data: { postId: string; commentId: string; reply: any; commentsCount: number }) => {
+                setPosts((prev) =>
+                  prev.map((post) =>
+                    post._id === data.postId
+                      ? { ...post, commentCount: data.commentsCount }
+                      : post
+                  )
+                );
+              };
+            
+              // ✅ Handle comment deletion
+              const handleCommentDeleted = (data: { postId: string; commentId: string; commentsCount: number }) => {
+                setPosts((prev) =>
+                  prev.map((post) =>
+                    post._id === data.postId
+                      ? { ...post, commentCount: data.commentsCount }
+                      : post
+                  )
+                );
+              };
+            
+              // ✅ Handle reply deletion
+              const handleReplyDeleted = (data: { postId: string; commentId: string; replyId: string; commentsCount: number }) => {
+                setPosts((prev) =>
+                  prev.map((post) =>
+                    post._id === data.postId
+                      ? { ...post, commentCount: data.commentsCount }
+                      : post
+                  )
+                );
+              };
+            
+              // ✅ Listen to socket events
+              socket.on("newComment", handleNewComment);
+              socket.on("newReply", handleNewReply);
+              socket.on("commentDeleted", handleCommentDeleted);
+              socket.on("replyDeleted", handleReplyDeleted);
+            
+              return () => {
+                socket.off("newComment", handleNewComment);
+                socket.off("newReply", handleNewReply);
+                socket.off("commentDeleted", handleCommentDeleted);
+                socket.off("replyDeleted", handleReplyDeleted);
+              };
+            }, [socket, posts]);
+            
 const fetchPosts = async () => {
   if (!hasMore || loadingPosts || fetchingRef.current) return;
   fetchingRef.current = true;
@@ -605,24 +641,24 @@ useEffect(() => {
   );
 })()}
 
-
-
-
-
-
-
                   <div className="mt-4 flex items-center gap-4 text-sm text-gray-500 justify-between">
                   <FetchRelatedLikes postId={post._id}/>
 <div className="flex items-center gap-1">
-{post.comments.length > 0 ? 
+{post.commentCount > 0 ? 
+<>
+
                    <p className="flex items-center gap-1 text-xs cursor-pointer hover:text-[#ff5757ae] transition-all duration-150" onClick={() => setShowComments(showComments === post._id ? null : post._id)}>
-                     <span className="flex items-center gap-0.5">{post.comments.length}<span>{post.comments.length > 1 ? "Comments" : "Comment"}</span></span>
+                     <span className="flex items-center gap-0.5">{post.commentCount}<span>{post.commentCount > 1 ? "Comments" : "Comment"}</span></span>
                     </p>
+                  
+                    </>
                     : null}
-                    <div className="h-1 w-1 rounded-full bg-gray-400"></div>
+                 {post.shares > 0 &&  <div className="h-1 w-1 rounded-full bg-gray-400"></div>}
+                    {post.shares > 0 && 
                     <button className="flex items-center gap-1 text-xs">
                       <span>{post.shares} Reposts</span>
                     </button>
+                    }
 </div>
                   </div>
                   <Separator className="bg-gray-200 my-1"/>
@@ -647,7 +683,7 @@ useEffect(() => {
                   {showComments === post._id && (
                             <CommentFunctionality
                                 postId={post._id}
-                                commentCount={post.comments.length}
+                                commentCount={post.commentCount}
                                 postOwner={post.postOwner}
                                 commentsFetched={commentsFetched}
                                 setCommentsFetched={setCommentsFetched}

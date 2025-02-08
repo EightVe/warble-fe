@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, Loader2, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useSocket } from '@/contexts/SocketContext';
 
 interface FetchRelatedLikesProps {
     postId: string;
@@ -26,20 +27,49 @@ export default function FetchRelatedLikes({ postId }: FetchRelatedLikesProps) {
     const [loading, setLoading] = useState(false);
     const [showMoreLikes, setShowMoreLikes] = useState(false);
 
+    const { socket } = useSocket();
+  
+    // ✅ Fetch likes from API
     useEffect(() => {
-        const fetchLikes = async () => {
-            setLoading(true);
-            try {
-                const response = await axiosInstance.get(`/post/get-related-likes/${postId}`);
-                setLikes(response.data.likes);
-            } catch (error) {
-                console.error("Error fetching likes:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLikes();
+      const fetchLikes = async () => {
+        setLoading(true);
+        try {
+          const response = await axiosInstance.get(`/post/get-related-likes/${postId}`);
+          setLikes(response.data.likes);
+        } catch (error) {
+          console.error("Error fetching likes:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchLikes();
     }, [postId]);
+  
+    // ✅ Listen for real-time like updates
+    useEffect(() => {
+      if (!socket) return;
+  
+      const handlePostLiked = (data: { postId: string; likes: any[] }) => {
+        if (data.postId === postId) {
+          setLikes(data.likes);
+        }
+      };
+  
+      const handlePostUnliked = (data: { postId: string; likes: any[] }) => {
+        if (data.postId === postId) {
+          setLikes(data.likes);
+        }
+      };
+  
+      socket.on("postLiked", handlePostLiked);
+      socket.on("postUnliked", handlePostUnliked);
+  
+      return () => {
+        socket.off("postLiked", handlePostLiked);
+        socket.off("postUnliked", handlePostUnliked);
+      };
+    }, [socket, postId]);
 
     return (
         <>

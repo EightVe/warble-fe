@@ -33,6 +33,12 @@ interface CommentProps {
   commentCount:any;
   postUID:any;
 }
+interface Comment {
+  _id: string;
+  content: string;
+  isDeleted?: boolean;
+}
+
 export default function CommentFunctionality({postUID, postId, postOwner,commentsFetched,setCommentsFetched,setShowComments,commentCount }: CommentProps) {
   const { user } = useContext(AuthContext) || {}; // Get current logged-in user
   const [comments, setComments] = useState<any[]>([]);
@@ -621,6 +627,8 @@ const TruncatedText = ({ content }: { content: string }) => {
       triggerAnimation("error", "An error occurred while deleting your reply.");
     }
   };
+  console.log("Comments for post:", postId, commentsFetched[postId]?.comments);
+
   return (
 <>
 {AnimationComponent}
@@ -653,6 +661,7 @@ className="md:mb-4 p-4 border border-gray-400 bg-white w-full md:max-w-2xl md:mx
         
  {commentCount} {commentCount === 1 ? "Comment" : "Comments"}
       </p>
+
     <Card className="mt-9 border-0 shadow-none flex-grow overflow-y-auto">
                     {/* Input for new comment */}
       {/* Comments List */}

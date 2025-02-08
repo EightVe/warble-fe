@@ -61,7 +61,6 @@ export default function CreatePost() {
                 uploadedUrls.push(url);
             }
             setImages((prev) => [...prev, ...uploadedUrls]);
-            triggerAnimation("success", "Upload successful.");
         } catch (error) {
             triggerAnimation("error", "An error accured.");
             console.error("Image upload error:", error);
@@ -82,7 +81,6 @@ export default function CreatePost() {
                 uploadedUrls.push(url);
             }
             setVideos((prev) => [...prev, ...uploadedUrls]);
-            triggerAnimation("success", "Upload successful.");
         } catch (error) {
             triggerAnimation("error", "An error accured.");
             console.error("Video upload error:", error);
@@ -126,7 +124,6 @@ export default function CreatePost() {
                 setSubmitting(false);
                 setIsVisible(false)
                 setViewAttachments(false)
-                triggerAnimation("success", "Your post is now public! 🎉");
             } else {
                 console.log("Post data:", postData);
                 setSubmitting(false);

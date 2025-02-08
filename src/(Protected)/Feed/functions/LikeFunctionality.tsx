@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import axiosInstance from "@/lib/axiosInstance";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface LikeFunctionalityProps {
   postId: string;
@@ -12,7 +13,7 @@ export default function LikeFunctionality({ postId, initialLikes }: LikeFunction
   const [likes, setLikes] = useState<number>(initialLikes);
   const [loading, setLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true); // Used for initial loading
-
+const {socket} = useSocket();
   useEffect(() => {
     const fetchLikeStatus = async () => {
       try {
@@ -30,11 +31,14 @@ export default function LikeFunctionality({ postId, initialLikes }: LikeFunction
     fetchLikeStatus();
   }, [postId]);
 
-  const toggleLike = async () => {
-    if (loading) return;
+    const toggleLike = async () => {
+    if (loading || !socket) return;
     setLoading(true);
 
     try {
+      // ✅ Step 1: Join the post room
+      socket.emit("joinPostRoom", postId);
+
       let response;
       if (liked) {
         response = await axiosInstance.post(`/post/remove-like/${postId}`);
@@ -49,6 +53,8 @@ export default function LikeFunctionality({ postId, initialLikes }: LikeFunction
     } catch (error) {
       console.error("Error toggling like:", error);
     } finally {
+      // ✅ Step 2: Leave the post room after action
+      socket.emit("leavePostRoom", postId);
       setLoading(false);
     }
   };

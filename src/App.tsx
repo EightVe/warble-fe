@@ -22,6 +22,7 @@ import TestPage from './TEST_PAGE/TestPage';
 import Home from './(Public)/home/Home';
 import { useContext, useEffect, useState } from 'react';
 import ForceOpenNotification from './components/Notifications/ForceOpenNotification';
+import PeerPage from './(Protected)/OnetoOnePeer/PeerPage';
 const AppContent = () => {
   // const location = useLocation();
   // const hideNavigationBarPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
@@ -117,6 +118,11 @@ const AppContent = () => {
                                                                   <Route path="/activity" element={
           <AuthBasedLayout>
             <ActivityPage />
+          </AuthBasedLayout>
+        } />
+                                                                          <Route path="/121pr" element={
+          <AuthBasedLayout>
+            <PeerPage />
           </AuthBasedLayout>
         } />
                                                                           <Route path="/security-center" element={
