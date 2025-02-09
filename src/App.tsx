@@ -120,7 +120,7 @@ const AppContent = () => {
             <ActivityPage />
           </AuthBasedLayout>
         } />
-                                                                          <Route path="/121pr" element={
+                                                                          <Route path="/wr/video-chat" element={
           <AuthBasedLayout>
             <PeerPage />
           </AuthBasedLayout>

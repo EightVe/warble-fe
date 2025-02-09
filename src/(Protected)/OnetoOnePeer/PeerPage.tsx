@@ -6,7 +6,8 @@ import AzarVideoChat from './Components/VideoLayout'
 export default function PeerPage() {
   return (
     <>
-    <VideoChat />
+    
+    <LandingPage />
     
     </>
   )
