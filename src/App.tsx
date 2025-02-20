@@ -23,6 +23,8 @@ import Home from './(Public)/home/Home';
 import { useContext, useEffect, useState } from 'react';
 import ForceOpenNotification from './components/Notifications/ForceOpenNotification';
 import PeerPage from './(Protected)/OnetoOnePeer/PeerPage';
+import PeerSystem from './(Protected)/OnetoOnePeer/Components/VideoLayout';
+import { VideoCallProvider } from './contexts/Context.jsx';
 const AppContent = () => {
   // const location = useLocation();
   // const hideNavigationBarPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
@@ -125,6 +127,20 @@ const AppContent = () => {
             <PeerPage />
           </AuthBasedLayout>
         } />
+                                                                                  {/* <Route path="/ps" element={
+          <AuthBasedLayout>
+            <PeerSystem />
+          </AuthBasedLayout>
+        } /> */}
+
+
+<Route path="/wr/video-chat" element={
+        <VideoCallProvider>
+          <AuthBasedLayout>
+            <PeerPage />
+          </AuthBasedLayout>
+        </VideoCallProvider>
+      } />
                                                                           <Route path="/security-center" element={
           <AuthBasedLayout>
             <SecurityCenterPage />
@@ -140,8 +156,9 @@ const App = () => (
     <Toaster position="top-center" />
     <AuthProvider>
       <SocketProvider>
-
+      <VideoCallProvider>
       <AppContent />
+      </VideoCallProvider>
       </SocketProvider>
     </AuthProvider>
   </>

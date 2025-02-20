@@ -1,14 +1,16 @@
 import React from 'react'
-import VideoChat from './Components/VideoChat'
 import LandingPage from './Components/Landing'
-import AzarVideoChat from './Components/VideoLayout'
-
+import Video from './componentscopy/Video/Video.jsx'
+import FormCard from './componentscopy/FormCard/FormCard.jsx'
+import IncommingCall from './componentscopy/IncomingCall/IncomingCall.jsx'
 export default function PeerPage() {
   return (
     <>
     
-    <LandingPage />
-    
+    {/* <LandingPage /> */}
+    <Video />
+    <FormCard />
+    <IncommingCall />
     </>
   )
 }
