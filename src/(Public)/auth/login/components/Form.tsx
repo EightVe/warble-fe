@@ -178,9 +178,8 @@ export default function Form() {
               animate="visible">
         {!otpSent ? (
         <motion.div variants={cardVariants}>
-          <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none">
+          <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none shadow-none">
             <div className="space-y-2 text-center">
-            <h1 className="text-3xl text-gray-300 font-bold tracking-wide uppercase logofont">Veyastro</h1>
               <p className="text-sm text-gray-300">Fill the informations bellow to log into your account</p>
             </div>
             <div className="space-y-4">
@@ -207,11 +206,11 @@ export default function Form() {
                   value={formData.password || ""}
                   onChange={handleChange}
                 />
-                <Link to="/auth/password-reset" className="text-[13px] pb-0 w-full flex items-center justify-end bg-gradient-to-tl from-[#93a9ff] to-[#6b63ffc7] hover:bg-[#9c97ff] text-transparent bg-clip-text">Forgot Password?</Link>
+                <Link to="/auth/password-reset" className="text-[13px] pb-0 w-full flex items-center justify-end bg-gradient-to-tl from-[#ff5757] to-[#ff5757] hover:bg-[#ff5757] text-transparent bg-clip-text">Forgot Password?</Link>
               </motion.div>
             </div>
              <motion.div variants={buttonVariants}>
-            <Button className="w-full text-gray-300 font-normal bg-gradient-to-tl from-[#93a9ffc1] to-[#6b63ffc7] border-[#9c97ff] border-2 rounded-xl hover:bg-[#9c97ff] duration-200" disabled={loading} type="submit">
+            <Button className="w-full text-gray-300 font-normal bg-gradient-to-tl from-[#ff078fa5] to-[#ff2941a5] border-[#ff575748] border-2 rounded-xl hover:bg-[#ff575769] duration-200" disabled={loading} type="submit">
               {loading && (
                 <Loader className="h-4 w-4 animate-spin" />
               )}
@@ -226,7 +225,7 @@ export default function Form() {
 
               </div>
             </div>
-                        <motion.div variants={buttonVariants}>
+                        {/* <motion.div variants={buttonVariants}>
             <div className="flex items-center justify-center gap-4">
             <Button variant="outline" className="gap-2 font-normal bg-[#5a617a2a] border-[#5a617a6e] border rounded-xl hover:bg-[#5a617a6e] hover:text-gray-300 w-full text-gray-300" disabled={loading}>
           <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -250,22 +249,16 @@ export default function Form() {
           Log in with Google
         </Button>
             </div>
-            </motion.div>
-            <div className="relative">
-              <motion.div variants={buttonVariants} className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-[#5a617a86]" />
-              </motion.div>
-            </div>
-            <p className="text-xs text-gray-300 text-center pt-2">
-              Don't have an account? <Link to="/auth/signup" className="bg-gradient-to-tl from-[#93a9ff] to-[#6b63ffc7] hover:bg-[#9c97ff] text-transparent bg-clip-text">Sign Up</Link>
+            </motion.div> */}
+            <p className="text-xs text-gray-300 text-center">
+              Don't have an account? <Link to="/auth/signup" className="bg-gradient-to-tl from-[#ff5757] to-[#ff5757] hover:bg-[#ff5757] text-transparent bg-clip-text">Sign Up</Link>
             </p>
           </Card>
           </motion.div>
         ) : (
           <motion.div variants={cardVariants}>
-          <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none">
+          <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none shadow-none">
             <div className="space-y-2 text-center">
-            <h1 className="text-3xl text-gray-300 font-bold tracking-wide uppercase logofont">Veyastro</h1>
               <p className="text-sm text-gray-300">It seems like two factor authentication is enabled! please enter the code sent to your email address.</p>
             <div className="space-y-4">
               <motion.div variants={inputVariants} className=" flex justify-center gap-2 items-center">
@@ -288,7 +281,7 @@ export default function Form() {
             </div>
             </div>
             <motion.div variants={buttonVariants}>
-            <Button className="text-gray-300 w-full font-normal bg-gradient-to-tl from-[#93a9ffc1] to-[#6b63ffc7] border-[#9c97ff] border-2 rounded-xl hover:bg-[#9c97ff] duration-200" disabled={loading} type="submit">
+            <Button className="text-gray-300 w-full font-normal bg-gradient-to-tl from-[#ff078fa5] to-[#ff2941a5] border-[#ff575748] border-2 rounded-xl hover:bg-[#ff575769] duration-200" disabled={loading} type="submit">
             {loading && (
                 <Loader className="h-4 w-4 animate-spin" />
               )}
@@ -302,9 +295,9 @@ export default function Form() {
             </div>
             <p className="text-xs text-gray-300 text-center pt-2 flex items-center justify-center gap-1"> 
               Didn't receive code? {resendTimer > 0 ? (
-                <span className="bg-gradient-to-tl from-[#93a9ff] to-[#6b63ffc7] hover:bg-[#9c97ff] text-transparent bg-clip-text">Resend in {resendTimer}s</span>
+                <span className="bg-gradient-to-tl from-[#ff5757] to-[#ff5757] hover:bg-[#ff5757] text-transparent bg-clip-text">Resend in {resendTimer}s</span>
               ) : (
-                <button onClick={(e) => handleOTPResend(e)} className="bg-gradient-to-tl from-[#93a9ff] to-[#6b63ffc7] hover:bg-[#9c97ff] text-transparent bg-clip-text">Resend</button>
+                <button onClick={(e) => handleOTPResend(e)} className="bg-gradient-to-tl from-[#ff5757] to-[#ff5757] hover:bg-[#ff5757] text-transparent bg-clip-text">Resend</button>
               )}
             </p>
           </Card>

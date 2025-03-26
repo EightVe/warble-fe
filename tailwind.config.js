@@ -77,12 +77,21 @@ module.exports = {
     				to: {
     					height: '0'
     				}
-    			}
+    			},
     		},
     		animation: {
     			'accordion-down': 'accordion-down 0.2s ease-out',
-    			'accordion-up': 'accordion-up 0.2s ease-out'
-    		}
+    			'accordion-up': 'accordion-up 0.2s ease-out',
+				glow: "glow 2s ease-in-out infinite",
+				"pulse-slow": "pulse 3s ease-in-out infinite",
+    		},
+			backgroundImage: {
+				"cyber-grid":
+				  "linear-gradient(rgba(0, 0, 0, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.5) 1px, transparent 1px)",
+			  },
+			  backgroundSize: {
+				"grid-size": "20px 20px",
+			  },
     	}
     },
     plugins: [require("tailwindcss-animate")],

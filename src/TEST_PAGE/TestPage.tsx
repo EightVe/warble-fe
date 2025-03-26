@@ -6,9 +6,16 @@ export default function TestPage() {
 
   console.log("🔥 Rendering Online Users:", onlineUsers); // Debugging
 
+  // Categorizing users
+  const onlineCount = onlineUsers.filter(user => user.status === "online").length;
+  const awayCount = onlineUsers.filter(user => user.status === "away").length;
+  const offlineCount = onlineUsers.filter(user => user.status === "offline").length;
+
   return (
     <div>
       <h3>Online Users</h3>
+      <p>🟢 Online: {onlineCount} | 🟡 Away: {awayCount} | 🔴 Offline: {offlineCount}</p>
+      
       {onlineUsers.length === 0 ? (
         <p>No users online</p>
       ) : (
@@ -23,6 +30,7 @@ export default function TestPage() {
           ))}
         </ul>
       )}
+      
       <LinkedInComment />
     </div>
   );

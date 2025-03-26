@@ -64,7 +64,7 @@ interface SocketProviderProps {
 }
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
-  const { user } = useContext(AuthContext) || {};
+  const { user, setUser } = useContext(AuthContext) || {};
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isAway, setIsAway] = useState<boolean>(false);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -95,7 +95,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     const newSocket: Socket = io("http://localhost:3000", {
       query: { userId: user._id, device: deviceType }, // ✅ Send device info
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
@@ -109,7 +109,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     newSocket.on("connect", () => console.log("✅ WebSocket Connected:", newSocket.id));
     newSocket.on("connect_error", (error) => console.error("❌ WebSocket Connection Error:", error));
     newSocket.on("disconnect", (reason) => console.warn("❌ WebSocket Disconnected:", reason));
+    newSocket.on("banStatusUpdated", ({ userId, isBanned }) => {
+      console.log("🔴 Ban Status Updated:", { userId, isBanned });
 
+      if (user && user._id === userId) {
+        // ✅ Update user state in AuthContext
+        setUser((prevUser) => prevUser ? { ...prevUser, isBanned } : prevUser);
+      }
+    });
     // ✅ Update online users list
     newSocket.on("onlineUsers", (users: OnlineUser[]) => {
       console.log("🟢 Online Users Updated:", users);

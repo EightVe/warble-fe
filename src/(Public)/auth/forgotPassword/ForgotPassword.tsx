@@ -52,9 +52,11 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="flex min-h-screen w-full bg-[#0c0c14] items-center justify-between py-4 relative flex-col">
-            <img src={AuthBG} width={1920} height={1080} alt="logo" className="opacity-[0.08] absolute bottom-0 z-5  md:translate-y-0 w-full h-full object-cover" />
-            <div></div>
+      <div className="flex min-h-screen w-full bg-[#110e0e] items-center justify-between py-4 relative flex-col overflow-hidden">
+      <div className="glowing-div absolute top-32 right-64 opacity-35 lg:opacity-15 h-96 rotate-45 inset-0"></div>
+    <div className="glowing-div absolute top-0 h-96 opacity-35 lg:opacity-15 inset-0"></div>
+    <div className="glowing-div absolute bottom-0 left-36 opacity-35 lg:opacity-15 h-96 rotate-12 inset-0"></div>
+<div className="flex items-center"><p className="logofont text-[#ff7474] text-2xl">warble.</p></div>
             <div className="flex w-full z-10 items-center justify-center">
                 <div className="w-full max-w-md">
 <div className="flex flex-1 items-center justify-center p-6">
@@ -65,8 +67,7 @@ export default function ForgotPassword() {
         <motion.div variants={cardVariants}>
         <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none shadow-none">
           <div className="space-y-2 text-center flex flex-col items-center">
-          <h1 className="text-3xl text-gray-300 font-bold tracking-wide uppercase logofont">Veyastro</h1>
-            <CheckCircle className='text-indigo-300 h-10 w-10'/>
+            <CheckCircle className='text-green-300 h-10 w-10'/>
             <p className='text-gray-400 text-xs'>A reset link has been sent to your email please check your inbox and your spam folder.</p>
           </div>
         </Card>
@@ -75,7 +76,6 @@ export default function ForgotPassword() {
           <motion.div variants={cardVariants}>
           <Card className="w-full max-w-sm space-y-4 p-6 bg-transparent border-none shadow-none">
             <div className="space-y-2 text-center">
-            <h1 className="text-3xl text-gray-300 font-bold tracking-wide uppercase logofont">Veyastro</h1>
               <p className="text-sm text-gray-300">Forgot your password? No worries, we got you! <br/> Enter your email address to reset your password</p>
             <div className="space-y-4">
               <motion.div variants={inputVariants} className=" flex justify-center gap-2 items-center">
@@ -86,7 +86,7 @@ export default function ForgotPassword() {
                                     </div>
                                     <div>
                                         <motion.div variants={buttonVariants}>
-            <Button className="text-gray-300 w-full font-normal bg-gradient-to-tl from-[#93a9ffc1] to-[#6b63ffc7] border-[#9c97ff] border-2 rounded-xl hover:bg-[#9c97ff] duration-200" disabled={loading} type="submit">
+            <Button className="w-full text-gray-300 font-normal bg-gradient-to-tl from-[#ff078fa5] to-[#ff2941a5] border-[#ff575748] border-2 rounded-xl hover:bg-[#ff575769] duration-200" disabled={loading} type="submit">
             {loading && (
                 <Loader className="h-4 w-4 animate-spin" />
               )}
@@ -104,7 +104,7 @@ export default function ForgotPassword() {
                           </motion.div>
                         </div>
                         <p className="text-xs text-gray-300 text-center pt-2">
-                          You remembered it? <Link to="/auth/login" className="bg-gradient-to-tl from-[#93a9ff] to-[#6b63ffc7] hover:bg-[#9c97ff] text-transparent bg-clip-text">Log In instead</Link>
+                          You remembered it? <Link to="/auth/login" className="bg-gradient-to-tl from-[#ff5757] to-[#ff5757] hover:bg-[#ff5757] text-transparent bg-clip-text">Log In instead</Link>
                         </p>
           </Card>
           </motion.div>
@@ -114,9 +114,9 @@ export default function ForgotPassword() {
 
                 </div>
             </div>
-            <div className="text-gray-500 z-10 text-xs max-w-sm text-center">You acknowledge that you read, and agree to our
-                <Link to="/legal/terms-of-use" className="text-gray-300"> Terms of Use</Link> and our <Link to="/legal/privacy-policy" className="text-gray-300">Privacy Policy</Link>
-            </div>
+            <div className="text-gray-300 z-10 text-xs max-w-sm text-center">You acknowledge that you read, and agree to our 
+        <Link to="/legal/terms-of-use" className="text-[#ff7474]"> Terms of Use</Link> and our <Link to="/legal/privacy-policy" className="text-[#ff7474]">Privacy Policy</Link>
+      </div>
         </div>
     );
 }

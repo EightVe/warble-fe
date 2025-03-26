@@ -12,6 +12,8 @@ interface User {
   username: string;
   firstName: string;
   lastName: string;
+  gender: string;
+  userAge: number;
   phoneNumber: string;
   token: string;
   bio: string;
@@ -29,6 +31,7 @@ interface AuthContextProps {
   isRefreshingToken: boolean;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   logout: () => Promise<void>;
+  updateGeoLocationManually: () => void; // ✅ new function
   // setUser: (user: User | null) => void;
   // logout: () => void;
 }
@@ -92,7 +95,6 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     handleAuthError();
   }, [loading, user, navigate]);
-
   const saveGeoLocation = async (
     userId: string,
     city: string,
@@ -105,36 +107,60 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     country_capital: string
   ) => {
     try {
-      const res = await fetch('/api/auth/geolocation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, city, country_name, ip, org, postal, version, network, country_capital }),
+      const res = await axiosInstance.post('/auth/geolocation', {
+        userId,
+        city,
+        country_name,
+        ip,
+        org,
+        postal,
+        version,
+        network,
+        country_capital,
       });
-      const data = await res.json();
-      console.log(data.message);
+  
+      console.log(res.data.message);
     } catch (err) {
-      console.log('Error saving geolocation:', err);
+      console.error('Error saving geolocation:', err);
     }
   };
+  
 
   useEffect(() => {
     const getGeoLocation = async () => {
-      if (!user || !user._id) {
-        return;
-      }
+      if (!user || !user._id) return;
+  
       try {
         const res = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
         const data = await res.text();
-        const ip = data.match(/ip=(.*)/)?.[1].trim();
-
+        const ip = data.match(/ip=(.*)/)?.[1]?.trim();
+  
         if (ip) {
           const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
           const geoData = await geoRes.json();
           console.log('Geolocation Data:', geoData);
-          const userId = user._id;
-          saveGeoLocation(userId, geoData.city, geoData.country_name, geoData.ip, geoData.org, geoData.postal, geoData.version, geoData.network, geoData.country_capital);
+  
+          // Check if user data exists and only send API request if needed
+          if (
+            !user.city ||
+            !user.country ||
+            !user.ip ||
+            user.city !== geoData.city ||
+            user.country !== geoData.country_name ||
+            user.ip !== geoData.ip
+          ) {
+            saveGeoLocation(
+              user._id,
+              geoData.city,
+              geoData.country_name,
+              geoData.ip,
+              geoData.org,
+              geoData.postal,
+              geoData.version,
+              geoData.network,
+              geoData.country_capital
+            );
+          }
         }
       } catch (err) {
         console.log(err);
@@ -142,7 +168,44 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
     getGeoLocation();
   }, [user]);
+  const updateGeoLocationManually = async () => {
+    if (!user || !user._id) return;
 
+    try {
+      const res = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+      const data = await res.text();
+      const ip = data.match(/ip=(.*)/)?.[1]?.trim();
+
+      if (ip) {
+        const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+        const geoData = await geoRes.json();
+        console.log('Geolocation Data:', geoData);
+
+        if (
+          !user.city ||
+          !user.country ||
+          !user.ip ||
+          user.city !== geoData.city ||
+          user.country !== geoData.country_name ||
+          user.ip !== geoData.ip
+        ) {
+          saveGeoLocation(
+            user._id,
+            geoData.city,
+            geoData.country_name,
+            geoData.ip,
+            geoData.org,
+            geoData.postal,
+            geoData.version,
+            geoData.network,
+            geoData.country_capital
+          );
+        }
+      }
+    } catch (err) {
+      console.log('Error updating geolocation manually:', err);
+    }
+  };
   const logout = async () => {
     try {
       await axiosInstance.post('/auth/logout');
@@ -152,12 +215,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       Cookies.remove('accessToken');
       Cookies.remove('refreshToken');
       setUser(null);
-      navigate('/auth/login');
+      window.location.href='/auth/login';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, logout, isGettingUserInfo, isRefreshingToken }}>
+    <AuthContext.Provider value={{ user, loading, setUser, logout, isGettingUserInfo, isRefreshingToken,updateGeoLocationManually }}>
       {children}
     </AuthContext.Provider>
   );
