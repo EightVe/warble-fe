@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { Loader, Loader2 } from 'lucide-react';
 import AuthBG from "@/assets/img/mainLogo.png";
 import { useNavigate } from 'react-router-dom';
+import { motion } from "framer-motion";
+import Logo from "@/assets/img/mainLogo.png"
 const AuthButIgnoresBan = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, isGettingUserInfo, isRefreshingToken } = useContext(AuthContext) || {};
   const router = useNavigate();
@@ -26,17 +28,30 @@ const AuthButIgnoresBan = ({ children }: { children: React.ReactNode }) => {
       message = 'R-TOKENS';
     }
     return (
-      <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 top-0">
+<div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 top-0">
       <div className="flex flex-col items-center">
-        <div className="relative w-24 h-24">
-         
-          <div className="absolute inset-2 border-4 border-t-[#ff5757] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-          <div className="absolute inset-4 border-4 border-r-[#ff5757] border-t-transparent border-b-transparent border-l-transparent rounded-full animate-spin-slow"></div>
-          <div className="absolute inset-6 border-4 border-b-[#ff5757] border-t-transparent border-r-transparent border-l-transparent rounded-full animate-spin-slower"></div>
-          <div className="absolute inset-8 border-4 border-l-[#ff5757] border-t-transparent border-r-transparent border-b-transparent rounded-full animate-spin"></div>
+        <div className="flex items-center justify-center gap-1">
+            <div className="h-7 w-7 rounded-lg bg-[#ff575748] flex items-center justify-center">
+             <img src={Logo} loading="lazy" alt="Warble Logo" />
+            </div>
+            <span className="text-gray-200 font-medium text-base tracking-tighter leading-tight logofont">Warble.</span>
+          </div>
+        {/* LinkedIn-style Bar */}
+        <div className="relative w-22 h-[3.5px] bg-zinc-300/30 mt-4 overflow-hidden rounded-full">
+          <motion.div
+            className="absolute top-0 left-0 h-full bg-[#ff5757] w-1/2 rounded-full"
+            animate={{
+              x: ["0%", "100%"],
+            }}
+            transition={{
+              repeat: Infinity,
+              repeatType: "reverse",
+              duration: 0.7,
+              ease: "easeInOut",
+            }}
+          />
         </div>
-        <div className="mt-4 text-[#ff5757] font-mono text-sm tracking-wider">{message}</div>
-        <div className=" text-[#ff5757] font-mono text-[10px] tracking-wider animate-pulse">WARBLE</div>
+        <p className='text-gray-400/80 text-xs pt-2'>{message}</p>
       </div>
     </div>
     );

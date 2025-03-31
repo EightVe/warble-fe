@@ -32,6 +32,7 @@ import ReportVideoSession from "./report-video-session"
 import AnimatedWLogo from "./AnimatedWaiting"
 import DefaultNavigation from "@/StaticComponents/NavigationBar/DefaultNavigation"
 import { Helmet } from "react-helmet"
+import SmallVersion from "./small-version"
 
 const getFlagImage = (countryName: string) => {
   const countryCode = countryToCode[countryName]
@@ -147,7 +148,7 @@ export default function VideoChat() {
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = io("http://localhost:3000")
+    const newSocket = io("https://vd.api.warble.chat")
     setSocket(newSocket)
 
     // Clean up on unmount
@@ -942,15 +943,15 @@ export default function VideoChat() {
           <meta property="og:title" content="Warble - Random Video Meeting" />
           <meta property="og:description" content="Experience seamless and fun random video meetings with Warble." />
           <meta property="og:site_name" content="Warble Chat" />
-          <meta property="og:url" content="https://warble.chat/wrb/ft/video-match" />
+          <meta property="og:url" content="https://warble.chat/video-match" />
           <meta property="og:image" content="https://warble.chat/assets/og-image.png" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content="Warble - Random Video Meeting" />
           <meta name="twitter:description" content="Join Warble for exciting random video meetings with people worldwide." />
           <meta name="twitter:image" content="https://warble.chat/assets/twitter-image.png" />
-          <link rel="canonical" href="https://warble.chat/wrb/ft/video-match" />
+          <link rel="canonical" href="https://warble.chat/video-match" />
         </Helmet>
-      <div className="min-h-screen bg-opacity-95 flex flex-col bg-[#110e0e] relative overflow-hidden">
+      <div className="min-h-screen bg-opacity-95 flex-col bg-[#110e0e] relative overflow-hidden hidden lg:flex">
         {/* Futuristic background elements */}
         <div className="glowing-div absolute top-32 right-64 opacity-35 lg:opacity-15 h-96 rotate-45 inset-0"></div>
         <div className="glowing-div absolute top-0 h-96 opacity-35 lg:opacity-15 inset-0"></div>
@@ -1579,7 +1580,7 @@ export default function VideoChat() {
           </div>
         </div>
       </div>
-
+      <SmallVersion />
       {/* Mobile Chat panel - as overlay */}
       {isChatOpen && (
         <div
