@@ -97,7 +97,7 @@ export default function SignupForm() {
         const { token } = loginRes.data;
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setLoading(false);
-        window.location.href = "/";
+        window.location.href = "/video-match";
       } else {
         setLoading(false);
         toast.error("Login failed after sign-up. Please try logging in manually.");

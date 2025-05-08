@@ -36,7 +36,6 @@ const NotAuthButBanCheck = ({ children }: { children: React.ReactNode }) => {
             }}
           />
         </div>
-        <p className='text-gray-400/80 text-xs pt-2'>{message}</p>
       </div>
     </div>
     );

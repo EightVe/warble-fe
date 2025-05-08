@@ -36,7 +36,7 @@ export default function Form() {
   const setUser = authContext?.setUser;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams(); // Use this hook to get query params
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = searchParams.get('redirect') || '/video-match';
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
